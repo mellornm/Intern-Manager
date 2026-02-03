@@ -22,8 +22,12 @@ from ui.styles import COLORS
 
 
 class ChartWidget(QFrame):
-    """Widget personalizado para gráficos, com tipagem explícita para o Pylance."""
-
+    """
+    A custom QFrame that holds a Matplotlib Figure and Canvas.
+    
+    This provides a convenient container for charts and includes type hints
+    for better static analysis with tools like Pylance.
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.figure: Optional[Figure] = None
@@ -31,7 +35,24 @@ class ChartWidget(QFrame):
 
 
 class DashboardView(QWidget):
+    """
+    A widget that serves as the main dashboard for the application.
+
+    It displays key performance indicators (KPIs) in summary cards and
+    visualizes data through Matplotlib charts for a quick overview of
+    the internship program's status.
+    """
+
     def __init__(self, intern_service, doc_service, meeting_service, venue_service):
+        """
+        Initializes the DashboardView with required services.
+        
+        Args:
+            intern_service: Service for intern-related data.
+            doc_service: Service for document-related data.
+            meeting_service: Service for meeting-related data.
+            venue_service: Service for venue-related data.
+        """
         super().__init__()
         self.i_service = intern_service
         self.d_service = doc_service
@@ -42,12 +63,13 @@ class DashboardView(QWidget):
         self.refresh_data()
 
     def _setup_ui(self):
+        """Initializes and configures the UI components for the dashboard."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(30)
 
         # --- Header ---
-        header = QHBoxLayout()
+        header_layout = QHBoxLayout()
         title_box = QVBoxLayout()
         title = QLabel("Monitoramento de Estágio")
         title.setStyleSheet(
@@ -70,12 +92,12 @@ class DashboardView(QWidget):
         """)
         btn_refresh.clicked.connect(self.refresh_data)
 
-        header.addLayout(title_box)
-        header.addStretch()
-        header.addWidget(btn_refresh)
-        layout.addLayout(header)
+        header_layout.addLayout(title_box)
+        header_layout.addStretch()
+        header_layout.addWidget(btn_refresh)
+        layout.addLayout(header_layout)
 
-        # --- Cards Superiores ---
+        # --- Top-level KPI Cards ---
         self.cards_container = QHBoxLayout()
         self.cards_container.setSpacing(20)
         layout.addLayout(self.cards_container)
@@ -98,15 +120,15 @@ class DashboardView(QWidget):
         self.cards_container.addWidget(self.card_pending)
         self.cards_container.addWidget(self.card_meetings)
 
-        # --- Área de Gráficos (Split 50/50) ---
+        # --- Charts Area (50/50 Split) ---
         charts_layout = QHBoxLayout()
         charts_layout.setSpacing(20)
 
-        # Gráfico 1: Vínculos (Pizza)
+        # Chart 1: Venue Distribution (Pie Chart)
         self.chart1_frame = self._create_chart_frame("Distribuição de Locais")
         charts_layout.addWidget(self.chart1_frame)
 
-        # Gráfico 2: Documentação (Barras com Filtro)
+        # Chart 2: Document Status (Bar Chart with Filter)
         doc_container = QFrame()
         doc_container.setStyleSheet(
             f"background-color: {COLORS['white']}; border-radius: 12px; border: 1px solid {COLORS['border']};"
@@ -120,7 +142,7 @@ class DashboardView(QWidget):
         doc_layout = QVBoxLayout(doc_container)
         doc_layout.setContentsMargins(10, 15, 10, 5)
 
-        # Header do Gráfico 2
+        # Header for the document chart
         doc_header = QHBoxLayout()
         lbl_doc = QLabel("Status Documental")
         lbl_doc.setStyleSheet(
@@ -129,22 +151,18 @@ class DashboardView(QWidget):
 
         self.combo_doc_filter = QComboBox()
 
-        # --- LISTA ATUALIZADA COM OS SEUS DOCUMENTOS REAIS ---
+        # Document types for the filter dropdown, aligned with database entries.
         doc_types = [
             "Todos",
-            "Contrato de Estágio",  # <--- Agora bate com o banco
+            "Contrato de Estágio",
             "Ficha de Frequência",
             "Diário de Campo",
             "Projeto de Intervenção",
-            "Avaliação do Supervisor Local",  # Agrupa Física e Carreiras
+            "Avaliação do Supervisor Local",
         ]
-        # -----------------------------------------------------
-
         self.combo_doc_filter.addItems(doc_types)
-        self.combo_doc_filter.setCurrentIndex(1)  # Padrão: Contrato de Estágio
-        self.combo_doc_filter.setFixedWidth(
-            200
-        )  # Aumentei um pouco pra caber nomes longos
+        self.combo_doc_filter.setCurrentIndex(1)  # Default to "Contrato de Estágio"
+        self.combo_doc_filter.setFixedWidth(200)
         self.combo_doc_filter.currentTextChanged.connect(self.refresh_data)
 
         doc_header.addWidget(lbl_doc)
@@ -152,7 +170,7 @@ class DashboardView(QWidget):
         doc_header.addWidget(self.combo_doc_filter)
         doc_layout.addLayout(doc_header)
 
-        # Canvas do Gráfico 2
+        # Canvas for the document chart
         self.fig_docs = Figure(figsize=(4, 3), dpi=100)
         self.fig_docs.patch.set_facecolor("none")
         self.canvas_docs = FigureCanvas(self.fig_docs)
@@ -162,7 +180,18 @@ class DashboardView(QWidget):
         charts_layout.addWidget(doc_container)
         layout.addLayout(charts_layout, stretch=1)
 
-    def _create_card_widget(self, title, icon_name, color_hex):
+    def _create_card_widget(self, title: str, icon_name: str, color_hex: str) -> QFrame:
+        """
+        Creates a styled QFrame to be used as a KPI card.
+        
+        Args:
+            title: The text to display below the value.
+            icon_name: The Font Awesome icon identifier.
+            color_hex: The hex color for the icon.
+            
+        Returns:
+            A configured QFrame ready to be added to the layout.
+        """
         frame = QFrame()
         frame.setStyleSheet(
             f"QFrame {{ background-color: {COLORS['white']}; border-radius: 12px; border: 1px solid {COLORS['border']}; }}"
@@ -203,7 +232,16 @@ class DashboardView(QWidget):
         layout.addWidget(lbl_icon)
         return frame
 
-    def _create_chart_frame(self, title):
+    def _create_chart_frame(self, title: str) -> ChartWidget:
+        """
+        Creates a styled frame container for a Matplotlib chart.
+
+        Args:
+            title: The title to display above the chart.
+            
+        Returns:
+            A configured ChartWidget with a figure and canvas initialized.
+        """
         frame = ChartWidget()
         frame.setStyleSheet(
             f"background-color: {COLORS['white']}; border-radius: 12px; border: 1px solid {COLORS['border']};"
@@ -234,25 +272,31 @@ class DashboardView(QWidget):
         frame.figure = fig
         return frame
 
-    def _update_card_value(self, card_widget, value):
+    def _update_card_value(self, card_widget: QFrame, value: int):
+        """Finds the 'value_label' in a card and updates its text."""
         lbl = card_widget.findChild(QLabel, "value_label")
         if lbl:
             lbl.setText(str(value))
 
     def refresh_data(self):
+        """
+        Fetches the latest data from all relevant services and updates the UI.
+
+        This includes recalculating card values and redrawing all charts.
+        """
         interns = self.i_service.get_all_interns()
 
         total_interns = len(interns)
         no_venue_count = sum(1 for i in interns if not i.venue_id)
 
-        # Pendências Gerais (Card)
+        # Calculate total pending documents for the KPI card
         total_pending_items = 0
         for i in interns:
             docs = self.d_service.get_documents_by_intern(i.intern_id)
-            total_pending_items += sum(1 for d in docs if d.status != "Aprovado")
-            if not docs:
+            if not docs or any(d.status != "Aprovado" for d in docs):
                 total_pending_items += 1
 
+        # Calculate meetings held in the current month
         all_meetings = self.m_service.repo.get_all()
         now = datetime.now()
         meetings_month = sum(
@@ -271,7 +315,15 @@ class DashboardView(QWidget):
         filter_doc = self.combo_doc_filter.currentText()
         self._plot_docs_filtered(filter_doc, interns)
 
-    def _plot_venue_distribution(self, frame, total, no_venue):
+    def _plot_venue_distribution(self, frame: ChartWidget, total: int, no_venue: int):
+        """
+        Generates and renders a donut chart for intern venue allocation.
+
+        Args:
+            frame: The target widget to draw the chart in.
+            total: The total number of interns.
+            no_venue: The number of interns without an assigned venue.
+        """
         if frame.figure is None or frame.canvas is None:
             return
 
@@ -307,7 +359,16 @@ class DashboardView(QWidget):
 
         frame.canvas.draw()
 
-    def _plot_docs_filtered(self, filter_name, interns):
+    def _plot_docs_filtered(self, filter_name: str, interns: list):
+        """
+        Generates a horizontal bar chart of document statuses.
+        
+        The chart is filtered by the document name selected in the dropdown.
+
+        Args:
+            filter_name: The name of the document to filter by, or "Todos".
+            interns: A list of all intern objects to process.
+        """
         self.fig_docs.clear()
         ax = self.fig_docs.add_subplot(111)
 
@@ -315,29 +376,26 @@ class DashboardView(QWidget):
         pending_count = 0
 
         if filter_name == "Todos":
+            # If 'All', an intern is 'pending' if any document is not approved.
             for i in interns:
                 docs = self.d_service.get_documents_by_intern(i.intern_id)
-                if not docs:
-                    pending_count += 1
-                elif any(d.status != "Aprovado" for d in docs):
+                if not docs or any(d.status != "Aprovado" for d in docs):
                     pending_count += 1
                 else:
                     ok_count += 1
         else:
+            # For a specific document type
             for i in interns:
                 docs = self.d_service.get_documents_by_intern(i.intern_id)
                 target_docs = [
                     d for d in docs if filter_name.lower() in d.document_name.lower()
                 ]
-
-                if not target_docs:
+                # An intern is 'ok' if at least one matching doc is approved.
+                # Otherwise, they are 'pending' for this document type.
+                if not target_docs or not any(d.status == "Aprovado" for d in target_docs):
                     pending_count += 1
                 else:
-                    is_ok = any(d.status == "Aprovado" for d in target_docs)
-                    if is_ok:
-                        ok_count += 1
-                    else:
-                        pending_count += 1
+                    ok_count += 1
 
         categories = ["Aprovado", "Pendente"]
         values = [ok_count, pending_count]
@@ -349,7 +407,8 @@ class DashboardView(QWidget):
             bars = ax.barh(categories, values, color=colors, height=0.4)
             ax.bar_label(bars, padding=3, fontweight="bold")
             ax.set_xlim(0, max(values) * 1.2 if max(values) > 0 else 1)
-
+            
+            # Clean up chart aesthetics
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             ax.spines["bottom"].set_visible(False)

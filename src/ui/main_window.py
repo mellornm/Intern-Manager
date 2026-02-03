@@ -440,7 +440,8 @@ class MainWindow(QMainWindow):
         search = text.lower().strip()
         for row in range(self.table.rowCount()):
             match = False
-            for col in [1, 2, 3]:  # Search name, venue, and registration number
+            # Search name, venue, and registration number columns
+            for col in [1, 2, 3]:
                 item = self.table.item(row, col)
                 if item and search in item.text().lower():
                     match = True
@@ -448,7 +449,15 @@ class MainWindow(QMainWindow):
             self.table.setRowHidden(row, not match)
 
     def get_selected_intern(self):
-        """Retrieves the intern object for the currently selected table row."""
+        """
+        Retrieves the Intern object for the currently selected table row.
+
+        If no intern is selected, it displays a warning message to the user.
+
+        Returns:
+            The Intern object for the selected row, or None if no row is
+            selected or the intern cannot be found.
+        """
         rows = self.table.selectionModel().selectedRows()
         if not rows:
             QMessageBox.warning(self, "Atenção", "Selecione um aluno na tabela.")
@@ -461,7 +470,7 @@ class MainWindow(QMainWindow):
 
     # --- DIALOG WRAPPERS ---
     def open_add_dialog(self):
-        """Opens a dialog to add a new intern."""
+        """Opens a dialog to add a new intern and handles the creation process."""
         d = InternDialog(self, self.venue_service)
         if d.exec():
             try:
@@ -499,19 +508,17 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Erro", str(e))
 
     def delete_intern(self):
-        """Deletes the selected intern after confirmation."""
+        """Deletes the selected intern after a confirmation dialog."""
         i = self.get_selected_intern()
         if not i:
             return
-        if (
-            QMessageBox.question(
-                self,
-                "Excluir",
-                f"Apagar {i.name}?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            == QMessageBox.StandardButton.Yes
-        ):
+        reply = QMessageBox.question(
+            self,
+            "Excluir",
+            f"Apagar {i.name}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
             self.service.delete_intern(i)
             self.load_data()
             self.page_dashboard.refresh_data()
@@ -537,7 +544,7 @@ class MainWindow(QMainWindow):
             self.page_dashboard.refresh_data()
 
     def open_observations(self):
-        """Opens the observation dialog for the selected intern."""
+        """Opens the observation management dialog for the selected intern."""
         i = self.get_selected_intern()
         if i:
             ObservationDialog(self, i, self.obs_service).exec()
@@ -547,7 +554,11 @@ class MainWindow(QMainWindow):
         SettingsDialog(self, export_service=self.export_service).exec()
 
     def import_csv_dialog(self):
-        # Filtro atualizado para aceitar Excel e CSV
+        """
+        Opens a file dialog for the user to select a spreadsheet file
+        (CSV, XLSX, XLS) to import interns from.
+        """
+        # Filter to accept both Excel and CSV formats
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Importar Alunos",
@@ -559,7 +570,7 @@ class MainWindow(QMainWindow):
             try:
                 self.import_service.read_file(path)
 
-                # Atualiza a tela
+                # Refresh the UI
                 self.load_data()
                 self.page_dashboard.refresh_data()
 
@@ -588,6 +599,7 @@ class MainWindow(QMainWindow):
             ).exec()
 
     def open_batch_meeting(self):
+        """Opens a dialog to create a single meeting for multiple interns."""
         d = BatchMeetingDialog(
             self, self.service, self.meeting_service, self.venue_service
         )
@@ -603,26 +615,31 @@ class MainWindow(QMainWindow):
             # Lazy-load or refresh data for the selected page
             if row == 0:  # Dashboard
                 self.page_dashboard.refresh_data()
-            elif row == 1:  # Alunos
+            elif row == 1:  # Interns
                 self.load_data()
-            elif row == 2:  # Locais
+            elif row == 2:  # Venues
                 self.page_venues.refresh_data()
-            elif row == 3:  # Critérios
+            elif row == 3:  # Criteria
                 self.page_criteria.refresh_data()
 
     def _open_context_menu(self, pos):
-        """Cria e exibe o menu de botão direito na tabela."""
-        # 1. Verifica se o clique foi em cima de uma linha válida
+        """
+        Creates and displays a context menu for the intern table.
+
+        The menu is triggered by a right-click and provides shortcuts
+        to common actions for the selected intern.
+        """
+        # 1. Check if the click was on a valid row item.
         item = self.table.itemAt(pos)
         if not item:
-            return  # Clicou no vazio, não faz nada
+            return  # Clicked on empty space, do nothing
 
-        # Garante que a linha clicada seja selecionada
+        # Ensure the clicked row is selected before showing the menu
         self.table.selectRow(item.row())
 
-        # 2. Cria o Menu
+        # 2. Create the menu instance
         menu = QMenu(self)
-        # Estilo para ficar bonitão (igual ao resto do sistema)
+        # Apply custom styling to match the application's theme
         menu.setStyleSheet(f"""
                 QMenu {{ 
                     background-color: {COLORS["white"]}; 
@@ -647,9 +664,7 @@ class MainWindow(QMainWindow):
                 }}
             """)
 
-        # 3. Adiciona as Ações (Reutilizando os ícones e métodos que já existem)
-
-        # Ação: Editar
+        # 3. Add actions to the menu, reusing existing methods and icons
         act_edit = menu.addAction(
             qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Cadastro"
         )
@@ -657,31 +672,26 @@ class MainWindow(QMainWindow):
 
         menu.addSeparator()
 
-        # Ação: Notas
         act_grades = menu.addAction(
             qta.icon("fa5s.star", color="#F5A623"), "  Lançar Notas"
         )
         act_grades.triggered.connect(self.open_grades_dialog)
 
-        # Ação: Documentos
         act_docs = menu.addAction(
             qta.icon("fa5s.folder-open", color="#4A90E2"), "  Documentos"
         )
         act_docs.triggered.connect(self.open_documents)
 
-        # Ação: Reuniões
         act_meet = menu.addAction(
             qta.icon("fa5s.calendar-alt", color="#50E3C2"), "  Supervisões"
         )
         act_meet.triggered.connect(self.open_meetings)
 
-        # Ação: Observações
         act_obs = menu.addAction(qta.icon("fa5s.eye", color="#9013FE"), "  Observações")
         act_obs.triggered.connect(self.open_observations)
 
         menu.addSeparator()
 
-        # Ação: Relatório (PDF)
         act_pdf = menu.addAction(
             qta.icon("fa5s.file-pdf", color="#D0021B"), "  Gerar Relatório Final"
         )
@@ -689,11 +699,10 @@ class MainWindow(QMainWindow):
 
         menu.addSeparator()
 
-        # Ação: Excluir (Destaque em Vermelho)
         act_del = menu.addAction(
             qta.icon("fa5s.trash-alt", color="#D0021B"), "  Excluir Aluno"
         )
         act_del.triggered.connect(self.delete_intern)
 
-        # 4. Exibe o menu na posição global do mouse
+        # 4. Display the menu at the global cursor position
         menu.exec(self.table.mapToGlobal(pos))

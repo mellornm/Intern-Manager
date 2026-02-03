@@ -17,9 +17,6 @@ import qtawesome as qta
 
 from ui.styles import COLORS
 from core.models.evaluation_criteria import EvaluationCriteria
-# Assumindo que você tem um CriteriaDialog similar ou vai usar InputDialog simples.
-# Vou usar uma abordagem simples com InputDialog para manter o fluxo,
-# mas se tiver um CriteriaDialog complexo, importe-o aqui.
 
 
 class CriteriaView(QWidget):
@@ -130,7 +127,6 @@ class CriteriaView(QWidget):
         cid = int(item.text())
         return next((c for c in self.criteria_list if c.criteria_id == cid), None)
 
-    # Nota: Simplifiquei Add/Edit usando InputDialog. Se tiver um Dialog complexo, substitua.
     def add_criteria(self):
         name, ok = QInputDialog.getText(self, "Novo Critério", "Nome do Critério:")
         if ok and name:

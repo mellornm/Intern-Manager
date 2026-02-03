@@ -63,7 +63,7 @@ def main():
     7.  Instantiates and displays the main application window (`MainWindow`).
     8.  Enters the Qt event loop.
     """
-    myappid = "mycompany.internmanager.pro.2026"  # Uma string qualquer única
+    myappid = "mycompany.internmanager.pro.2026"  
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QApplication(sys.argv)
 
@@ -156,7 +156,6 @@ def main():
             d_service.create_initial_documents_batch(intern.intern_id)
 
     # Inject all necessary services into the main UI window.
-    # The UI layer should only interact with services, never with repositories directly.
     window = MainWindow(
         intern_service=i_service,
         criteria_service=criteria_service,
@@ -200,8 +199,8 @@ def get_csv_path() -> Optional[Path]:
     if not csv_files:
         return None
 
-    # To keep it simple, we only process one file per run.
-    # If there's more than one, just pick the first and let the user know.
+    # Only one file is processed per run
+    # If there's more than one, it uses the first one and warns the user.
     if len(csv_files) > 1:
         print(f"WARNING: Múltiplos CSVs encontrados. Usando {csv_files[0].name}")
 

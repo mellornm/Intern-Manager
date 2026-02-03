@@ -19,18 +19,32 @@ from ui.dialogs.venue_dialog import VenueDialog
 
 
 class VenueView(QWidget):
+    """
+    Manages the UI for internship venues.
+
+    This widget displays a list of venues in a table, allowing users
+    to add, edit, and delete them through a dialog interface.
+    """
+
     def __init__(self, service):
+        """
+        Initializes the VenueView.
+
+        Args:
+            service: The venue service instance for database operations.
+        """
         super().__init__()
         self.service = service
         self._setup_ui()
         self.refresh_data()
 
     def _setup_ui(self):
+        """Initializes and configures the UI components for the view."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
 
-        # Header
+        # --- Header ---
         header = QHBoxLayout()
         lbl = QLabel("Gerenciar Locais")
         lbl.setStyleSheet(
@@ -50,10 +64,10 @@ class VenueView(QWidget):
         header.addWidget(self.btn_add)
         layout.addLayout(header)
 
-        # Tabela
+        # --- Table ---
         self.table = QTableWidget()
 
-        # Paleta Azul Bonita
+        # Set a custom color for the selection highlight
         palette = self.table.palette()
         palette.setColor(QPalette.ColorRole.Highlight, QColor("#BBDEFB"))
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor(COLORS["dark"]))
@@ -79,7 +93,7 @@ class VenueView(QWidget):
         self.table.doubleClicked.connect(self.edit_venue)
         layout.addWidget(self.table)
 
-        # Botões de Ação Inferiores
+        # --- Action Buttons ---
         actions_layout = QHBoxLayout()
         actions_layout.addStretch()
 
@@ -104,6 +118,7 @@ class VenueView(QWidget):
         layout.addLayout(actions_layout)
 
     def refresh_data(self):
+        """Fetches all venues from the service and repopulates the table."""
         self.venues = self.service.get_all()
         self.table.setRowCount(0)
         for row, v in enumerate(self.venues):
@@ -121,27 +136,27 @@ class VenueView(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(v.supervisor_phone or "-"))
 
     def get_selected(self):
+        """
+        Retrieves the full Venue object for the currently selected table row.
+
+        Returns:
+            The Venue object, or None if no row is selected.
+        """
         rows = self.table.selectionModel().selectedRows()
         if not rows:
             return None
 
-        # Trava de segurança: Pega o item e verifica se existe
+        # Ensure the item exists before trying to access its text
         item = self.table.item(rows[0].row(), 0)
         if item is None:
             return None
 
         vid = int(item.text())
+        # Find the corresponding object in our cached list
         return next((v for v in self.venues if v.venue_id == vid), None)
 
     def add_venue(self):
-        if VenueDialog(self).exec():
-            # A lógica de salvar está dentro do Dialog ou retornando dados?
-            # No seu código anterior, o dialog retornava dados e a view salvava.
-            # Vou manter o padrão: Dialog retorna dados, View chama Service.
-            pass
-            # Espere... O seu VenueDialog anterior tinha um método get_data() mas não salvava sozinho.
-            # Vou instanciar, executar e salvar aqui:
-
+        """Opens a dialog to add a new venue and saves it if accepted."""
         d = VenueDialog(self)
         if d.exec():
             try:
@@ -152,9 +167,11 @@ class VenueView(QWidget):
                 QMessageBox.critical(self, "Erro", str(e))
 
     def edit_venue(self):
+        """Opens a dialog to edit the selected venue and saves the changes."""
         v = self.get_selected()
         if not v:
             return
+
         d = VenueDialog(self, v)
         if d.exec():
             try:
@@ -164,18 +181,19 @@ class VenueView(QWidget):
                 QMessageBox.critical(self, "Erro", str(e))
 
     def delete_venue(self):
+        """Deletes the selected venue after a confirmation dialog."""
         v = self.get_selected()
         if not v:
             return
-        if (
-            QMessageBox.question(
-                self,
-                "Excluir",
-                f"Excluir '{v.venue_name}'?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            == QMessageBox.StandardButton.Yes
-        ):
+
+        reply = QMessageBox.question(
+            self,
+            "Excluir",
+            f"Excluir '{v.venue_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
             try:
                 self.service.delete_venue(v)
                 self.refresh_data()

@@ -1,18 +1,16 @@
-# src/ui/styles.py
-
 COLORS = {
-    "primary": "#005A9E",  # Azul corporativo
+    "primary": "#005A9E",
     "primary_hover": "#004C87",
-    "secondary": "#6C757D",  # Cinza neutro
-    "success": "#107C10",  # Verde
-    "warning": "#FFC107",  # Amarelo
-    "danger": "#D13438",  # Vermelho
-    "dark": "#323130",  # Texto escuro
-    "medium": "#605E5C",  # Texto médio
-    "light": "#F3F2F1",  # Fundo claro
+    "secondary": "#6C757D",
+    "success": "#107C10",
+    "warning": "#FFC107",
+    "danger": "#D13438",
+    "dark": "#323130",
+    "medium": "#605E5C",
+    "light": "#F3F2F1",
     "white": "#FFFFFF",
     "border": "#E1DFDD",
-    "sidebar_bg": "#201F1E",  # Fundo escuro da sidebar
+    "sidebar_bg": "#201F1E",
     "sidebar_text": "#F3F2F1",
 }
 

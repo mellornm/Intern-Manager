@@ -1,3 +1,10 @@
+"""
+Validation and Formatting Utilities.
+
+This module centralizes reusable functions for validating input data
+(like emails and dates) and for converting data formats between the UI
+(BR format) and the database (ISO format).
+"""
 from datetime import datetime
 import re
 from typing import Any, Optional
@@ -43,16 +50,16 @@ def _try_parse_date(date_str: str) -> datetime:
 
 def validate_email_format(email: str) -> None:
     """
-    Validates whether a string matches a valid e-mail format.
+    Verifies if a string matches a valid email format.
 
     Args:
-        email (str): E-mail address to be validated.
+        email (str): Email address to be validated.
 
     Raises:
-        ValueError: If the e-mail does not match the expected format.
+        ValueError: If the email does not match the expected format.
     """
     if not re.match(EMAIL_REGEX, email):
-        raise ValueError("Invalid e-mail format.")
+        raise ValueError("Invalid email format.")
 
 
 def validate_date_range(start_date_str: str, end_date_str: str) -> None:

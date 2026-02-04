@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intern Manager - Download Oficial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --success: #16a34a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        /* Header / Hero Section */
+        header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        p.subtitle {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto 40px auto;
+        }
+
+        /* Download Section */
+        .download-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-win {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-mac {
+            background-color: #333;
+            color: white;
+        }
+
+        /* Installation Guide */
+        .guide {
+            max-width: 800px;
+            margin: 60px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert-box {
+            background-color: #fff7ed;
+            border-left: 4px solid #f97316;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px;
+            background-color: white;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .github-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <i class="fas fa-graduation-cap fa-3x" style="margin-bottom: 20px; color: #60a5fa;"></i>
+        <h1>Intern Manager</h1>
+        <p class="subtitle">A solução definitiva para gestão de estágios acadêmicos. Controle alunos, documentos e notas em um só lugar.</p>
+
+        <div class="download-container">
+            <a href="https://github.com/vonroderik/Intern-Manager/releases/download/1.0.0-rc.1/InternManager.zip" class="btn btn-win">
+                <i class="fab fa-windows"></i> Baixar para Windows
+            </a>
+
+            <a href="https://github.com/vonroderik/Intern-Manager/releases/download/1.0.0-rc.1/InternManager-Mac-Build.zip" class="btn btn-mac">
+                <i class="fab fa-apple"></i> Baixar para Mac
+            </a>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 0.9rem; color: #64748b;">Versão 1.0.0 • Gratuito</p>
+    </header>
+
+    <main class="guide">
+        <h2>⚠️ Leia antes de instalar</h2>
+        <p>Como este é um software acadêmico independente (não pago certificados caros da Microsoft/Apple), o sistema pode emitir um alerta de segurança na primeira vez.</p>
+
+        <div class="alert-box">
+            <h3><i class="fas fa-shield-alt"></i> No Windows (Tela Azul)</h3>
+            <p>Se aparecer a tela "O Windows protegeu o computador":</p>
+            <ol>
+                <li>Clique em <u>Mais informações</u> (texto pequeno).</li>
+                <li>Clique no botão <strong>Executar assim mesmo</strong>.</li>
+            </ol>
+        </div>
+
+        <div class="alert-box" style="border-left-color: #333; background-color: #f8fafc;">
+            <h3><i class="fab fa-apple"></i> No MacOS</h3>
+            <p>Se aparecer um aviso que o desenvolvedor não pode ser verificado:</p>
+            <ol>
+                <li>Clique com o <strong>Botão Direito</strong> no ícone do App.</li>
+                <li>Escolha <strong>Abrir</strong> no menu.</li>
+                <li>Confirme clicando em <strong>Abrir</strong> na caixa de diálogo.</li>
+            </ol>
+        </div>
+    </main>
+
+    <footer>
+        <p>Desenvolvido por <strong>Rodrigo Noronha de Mello</strong></p>
+        <p><i class="fas fa-envelope"></i> <a href="mailto:mellornm@gmail.com">mellornm@gmail.com</a></p>
+        
+        <a href="https://github.com/vonroderik/Intern-Manager/blob/main/README.md" class="github-link" target="_blank">
+            <i class="fab fa-github"></i> Ver Código Fonte e Documentação
+        </a>
+    </footer>
+
+</body>
+</html>

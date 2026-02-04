@@ -99,3 +99,7 @@ DB_PATH = DB_DIR / "interns.db"
 # Ensure the directory for the database exists before the app tries to use it.
 # This is especially important on the first run.
 DB_DIR.mkdir(parents=True, exist_ok=True)
+
+# Version
+VERSION = "1.0.0"
+REPO_URL = "https://api.github.com/repos/vonroderik/Intern-Manager/releases/latest"

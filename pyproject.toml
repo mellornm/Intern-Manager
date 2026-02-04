@@ -18,9 +18,11 @@ classifiers = [
 dependencies = [
     "matplotlib>=3.10.8",
     "openpyxl>=3.1.5",
+    "packaging>=25.0",
     "pyinstaller>=6.17.0",
     "pyside6>=6.10.1",
     "qtawesome>=1.4.0",
+    "requests>=2.32.5",
     "ruff>=0.14.9",
 ]
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
 
 
@@ -37,6 +38,7 @@ from services.import_service import ImportService
 from services.meeting_service import MeetingService
 from services.report_service import ReportService
 from services.export_service import ExportService
+from services.update_service import check_for_updates
 
 # Utils
 from utils.seeder import seed_default_criteria
@@ -63,7 +65,7 @@ def main():
     7.  Instantiates and displays the main application window (`MainWindow`).
     8.  Enters the Qt event loop.
     """
-    myappid = "mycompany.internmanager.pro.2026"  
+    myappid = "mycompany.internmanager.pro.2026"
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QApplication(sys.argv)
 
@@ -170,6 +172,7 @@ def main():
     )
 
     window.show()
+    QTimer.singleShot(2000, lambda: check_for_updates(window))
 
     print("\n=== SYSTEM RUNNING (GUI) ===")
 

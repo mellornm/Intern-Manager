@@ -24,10 +24,11 @@ from ui.styles import COLORS
 class ChartWidget(QFrame):
     """
     A custom QFrame that holds a Matplotlib Figure and Canvas.
-    
+
     This provides a convenient container for charts and includes type hints
     for better static analysis with tools like Pylance.
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.figure: Optional[Figure] = None
@@ -46,7 +47,7 @@ class DashboardView(QWidget):
     def __init__(self, intern_service, doc_service, meeting_service, venue_service):
         """
         Initializes the DashboardView with required services.
-        
+
         Args:
             intern_service: Service for intern-related data.
             doc_service: Service for document-related data.
@@ -183,12 +184,12 @@ class DashboardView(QWidget):
     def _create_card_widget(self, title: str, icon_name: str, color_hex: str) -> QFrame:
         """
         Creates a styled QFrame to be used as a KPI card.
-        
+
         Args:
             title: The text to display below the value.
             icon_name: The Font Awesome icon identifier.
             color_hex: The hex color for the icon.
-            
+
         Returns:
             A configured QFrame ready to be added to the layout.
         """
@@ -238,7 +239,7 @@ class DashboardView(QWidget):
 
         Args:
             title: The title to display above the chart.
-            
+
         Returns:
             A configured ChartWidget with a figure and canvas initialized.
         """
@@ -362,7 +363,7 @@ class DashboardView(QWidget):
     def _plot_docs_filtered(self, filter_name: str, interns: list):
         """
         Generates a horizontal bar chart of document statuses.
-        
+
         The chart is filtered by the document name selected in the dropdown.
 
         Args:
@@ -392,7 +393,9 @@ class DashboardView(QWidget):
                 ]
                 # An intern is 'ok' if at least one matching doc is approved.
                 # Otherwise, they are 'pending' for this document type.
-                if not target_docs or not any(d.status == "Aprovado" for d in target_docs):
+                if not target_docs or not any(
+                    d.status == "Aprovado" for d in target_docs
+                ):
                     pending_count += 1
                 else:
                     ok_count += 1
@@ -407,7 +410,7 @@ class DashboardView(QWidget):
             bars = ax.barh(categories, values, color=colors, height=0.4)
             ax.bar_label(bars, padding=3, fontweight="bold")
             ax.set_xlim(0, max(values) * 1.2 if max(values) > 0 else 1)
-            
+
             # Clean up chart aesthetics
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)

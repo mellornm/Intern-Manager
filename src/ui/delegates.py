@@ -4,6 +4,7 @@ Custom delegates for rendering items in Qt views.
 This module provides specialized QStyledItemDelegate subclasses to customize
 the appearance of data in components like QTableWidget.
 """
+
 from PySide6.QtWidgets import QStyledItemDelegate
 from PySide6.QtGui import QColor, QPainter, QBrush, QPainterPath
 from PySide6.QtCore import Qt

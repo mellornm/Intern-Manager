@@ -5,6 +5,7 @@ This module centralizes reusable functions for validating input data
 (like emails and dates) and for converting data formats between the UI
 (BR format) and the database (ISO format).
 """
+
 from datetime import datetime
 import re
 from typing import Any, Optional

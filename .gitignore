@@ -1,11 +1,15 @@
 # Python-generated files
 __pycache__/
-*.py[oc]
-wheels/
-*.egg-info
+*.pyc
+.venv/
+.venv_linux/
+.vscode/
+*.pyo
+*.pyd
 
 # VSCode
 .vscode
+*.code-workspace
 
 # Virtual environments
 .venv

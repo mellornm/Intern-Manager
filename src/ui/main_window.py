@@ -253,15 +253,20 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
 
-        # Page header
+        # --- HEADER (Título + Botões) ---
         header = QHBoxLayout()
+
+        # 1. Título
         lbl = QLabel("Gerenciar Alunos")
         lbl.setStyleSheet(
             f"font-size: 26px; font-weight: 800; color: {COLORS['dark']};"
         )
         header.addWidget(lbl)
+
+        # Empurra os botões para a direita
         header.addStretch()
 
+        # 2. Botão Novo Aluno
         self.btn_add = QPushButton(" Novo Aluno")
         self.btn_add.setIcon(qta.icon("fa5s.plus", color="white"))
         self.btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -269,13 +274,10 @@ class MainWindow(QMainWindow):
             QPushButton {{ background-color: {COLORS["primary"]}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; }}
             QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
         """)
-        self.btn_add.clicked.connect(self.open_add_dialog)
-        header.addWidget(self.btn_add)
-        layout.addLayout(header)
-
-        self.btn_add.clicked.connect(self.open_add_dialog)
+        self.btn_add.clicked.connect(self.open_add_dialog)  # Conectado apenas UMA vez
         header.addWidget(self.btn_add)
 
+        # 3. Botão Reunião em Grupo
         self.btn_batch = QPushButton(" Reunião em Grupo")
         self.btn_batch.setIcon(qta.icon("fa5s.users", color="white"))
         self.btn_batch.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -285,9 +287,11 @@ class MainWindow(QMainWindow):
         """)
         self.btn_batch.clicked.connect(self.open_batch_meeting)
         header.addWidget(self.btn_batch)
+
+        # Adiciona o layout do cabeçalho ao layout principal APENAS UMA VEZ
         layout.addLayout(header)
 
-        # Toolbar with search and import
+        # --- TOOLBAR (Busca + Importar) ---
         actions = QHBoxLayout()
         self.txt_search = QLineEdit()
         self.txt_search.setPlaceholderText("🔍  Buscar por nome, RA ou local...")
@@ -311,7 +315,7 @@ class MainWindow(QMainWindow):
         actions.addWidget(btn_import)
         layout.addLayout(actions)
 
-        # Interns Table
+        # --- TABELA ---
         self.table = QTableWidget()
 
         # Fix palette to ensure selection highlight is the correct color

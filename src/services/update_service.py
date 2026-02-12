@@ -18,12 +18,12 @@ def check_for_updates(parent_window):
                 reply = QMessageBox.question(
                     parent_window,
                     "Atualização Disponível",
-                    f"A versão {latest_tag} está disponível! Deseja baixar agora?",
+                    f"A versão {latest_tag} está disponível!\n\nDeseja acessar a página de download?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 )
 
                 if reply == QMessageBox.StandardButton.Yes:
-                    webbrowser.open(data["html_url"])
+                    webbrowser.open("https://vonroderik.github.io/Intern-Manager/")
 
     except Exception as e:
         print(f"Erro ao verificar updates: {e}")

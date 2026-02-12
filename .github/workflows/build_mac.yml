@@ -45,3 +45,4 @@ jobs:
           files: dist/InternManager_Mac.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          

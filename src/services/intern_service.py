@@ -1,4 +1,5 @@
 from services.base_service import BaseService
+from utils.text_utils import smart_title
 from core.models.intern import Intern
 from repository.intern_repo import InternRepository
 from utils.validations import (
@@ -79,6 +80,18 @@ class InternService(BaseService[Intern]):
         intern_data.start_date = parse_date_to_iso(intern_data.start_date)
         intern_data.end_date = parse_date_to_iso(intern_data.end_date)
 
+    def get_by_name(self, name: str) -> Optional[Intern]:
+        """
+        Retrieves an intern by name (encapsulating the repository).
+
+        Args:
+            name (str): The name (or partial name) to search for.
+
+        Returns:
+            Optional[Intern]: The found intern or None.
+        """
+        return self.repo.get_by_name(name)
+
     def add_new_intern(self, intern: Intern):
         """
         Validates and adds a new intern to the system.
@@ -98,22 +111,12 @@ class InternService(BaseService[Intern]):
         if self.repo.get_by_registration_number(intern.registration_number):
             raise ValueError("RA já cadastrado.")
 
+        intern.name = smart_title(intern.name)
+
         self._normalize_intern_dates(intern)
         self._validate_common_intern_data(intern)
 
         return self.repo.save(intern)
-
-    def get_by_name(self, name: str) -> Optional[Intern]:
-        """
-        Retrieves an intern by name (encapsulating the repository).
-
-        Args:
-            name (str): The name (or partial name) to search for.
-
-        Returns:
-            Optional[Intern]: The found intern or None.
-        """
-        return self.repo.get_by_name(name)
 
     def update_intern(self, intern: Intern):
         """
@@ -135,6 +138,9 @@ class InternService(BaseService[Intern]):
         existing = self.repo.get_by_registration_number(intern.registration_number)
         if existing and existing.intern_id != intern.intern_id:
             raise ValueError("Este RA pertence a outro estagiário.")
+
+        intern.name = smart_title(intern.name)
+
         self._validate_common_intern_data(intern)
         self._normalize_intern_dates(intern)
 

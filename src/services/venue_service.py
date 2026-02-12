@@ -1,4 +1,5 @@
 from services.base_service import BaseService
+from utils.text_utils import smart_title
 from core.models.venue import Venue
 from repository.venue_repo import VenueRepository
 from utils.validations import validate_email_format
@@ -35,6 +36,18 @@ class VenueService(BaseService[Venue]):
         """
         super().__init__(repo)
 
+    def get_by_name(self, name: str) -> Optional[Venue]:
+        """
+        Searches for a Venue by its name.
+
+        Args:
+            name (str): The name (or partial name) to search for.
+
+        Returns:
+            Optional[Venue]: The Venue object if found, or None.
+        """
+        return self.repo.get_by_name(name)
+
     def add_new_venue(self, venue: Venue):
         """
         Validates and adds a new venue to the system.
@@ -55,19 +68,10 @@ class VenueService(BaseService[Venue]):
 
         if venue.supervisor_email:
             validate_email_format(str(venue.supervisor_email))
+
+        venue.venue_name = smart_title(venue.venue_name)
+
         return self.repo.save(venue)
-
-    def get_by_name(self, name: str) -> Optional[Venue]:
-        """
-        Searches for a Venue by its name.
-
-        Args:
-            name (str): The name (or partial name) to search for.
-
-        Returns:
-            Optional[Venue]: The Venue object if found, or None.
-        """
-        return self.repo.get_by_name(name)
 
     def update_venue(self, venue: Venue):
         """
@@ -87,6 +91,9 @@ class VenueService(BaseService[Venue]):
 
         if venue.supervisor_email:
             validate_email_format(str(venue.supervisor_email))
+
+        venue.venue_name = smart_title(venue.venue_name)
+
         return self.repo.update(venue)
 
     def delete_venue(self, venue: Venue):

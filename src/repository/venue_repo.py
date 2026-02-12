@@ -36,7 +36,7 @@ class VenueRepository:
             List[Venue]: A list of Venue objects ordered by name.
         """
         sql_query = """
-        SELECT venue_id, venue_name, address, supervisor_name, supervisor_email, supervisor_phone 
+        SELECT venue_id, venue_name, address as venue_address, supervisor_name, supervisor_email, supervisor_phone 
         FROM venues 
         ORDER BY venue_name COLLATE NOCASE ASC
         """
@@ -45,94 +45,69 @@ class VenueRepository:
 
         venues = []
         for row in results:
-            venues.append(
-                Venue(
-                    venue_id=row["venue_id"],
-                    venue_name=row["venue_name"],
-                    venue_address=row["address"],
-                    supervisor_name=row["supervisor_name"],
-                    supervisor_email=row["supervisor_email"],
-                    supervisor_phone=row["supervisor_phone"],
-                )
-            )
+            venue = Venue.from_db_row(row)
+            if venue:
+                venues.append(venue)
         return venues
 
     def get_by_id(self, venue_id: int) -> Optional[Venue]:
         """
-        Retrieves a venue by its unique database identifier.
+        Retrieves a single venue by its ID.
 
         Args:
-            venue_id (int): Unique identifier of the venue.
+            venue_id (int): The unique identifier of the venue.
 
         Returns:
-            Optional[Venue]: The Venue object if found, or None otherwise.
+            Optional[Venue]: The Venue object if found, otherwise None.
         """
         sql_query = """
-        SELECT venue_id, venue_name, address, supervisor_name, supervisor_email, supervisor_phone 
-        FROM venues WHERE venue_id = ?
+        SELECT venue_id, venue_name, address as venue_address, supervisor_name, supervisor_email, supervisor_phone 
+        FROM venues 
+        WHERE venue_id = ?
         """
         self.cursor.execute(sql_query, (venue_id,))
         row = self.cursor.fetchone()
 
-        if row is None:
-            return None
-
-        return Venue(
-            venue_id=row["venue_id"],
-            venue_name=row["venue_name"],
-            venue_address=row["address"],
-            supervisor_name=row["supervisor_name"],
-            supervisor_email=row["supervisor_email"],
-            supervisor_phone=row["supervisor_phone"],
-        )
+        return Venue.from_db_row(row)
 
     def get_by_name(self, name: str) -> Optional[Venue]:
         """
-        Retrieves the first venue whose name partially matches the given value.
+        Retrieves a single venue by its name.
 
         Args:
-            name (str): Partial or full name of the venue.
+            name (str): The name of the venue.
 
         Returns:
-            Optional[Venue]: The first matching Venue object, or None.
+            Optional[Venue]: The Venue object if found, otherwise None.
         """
         sql_query = """
-        SELECT venue_id, venue_name, address, supervisor_name, supervisor_email, supervisor_phone 
-        FROM venues WHERE venue_name LIKE ?
-        ORDER BY venue_name COLLATE NOCASE ASC
+        SELECT venue_id, venue_name, address as venue_address, supervisor_name, supervisor_email, supervisor_phone 
+        FROM venues 
+        WHERE venue_name = ?
         """
-        self.cursor.execute(sql_query, (f"%{name}%",))
+        self.cursor.execute(sql_query, (name,))
         row = self.cursor.fetchone()
 
-        if row is None:
-            return None
+        return Venue.from_db_row(row)
 
-        return Venue(
-            venue_id=row["venue_id"],
-            venue_name=row["venue_name"],
-            venue_address=row["address"],
-            supervisor_name=row["supervisor_name"],
-            supervisor_email=row["supervisor_email"],
-            supervisor_phone=row["supervisor_phone"],
-        )
-
-    def save(self, venue: Venue) -> Optional[int]:
+    def save(self, venue: Venue) -> int:
         """
-        Persists a new Venue entity in the database.
+        Persists a new Venue entity to the database.
 
         Args:
-            venue (Venue): Venue entity to be persisted.
+            venue (Venue): The venue object to be saved.
 
         Returns:
-            Optional[int]: The generated database ID, or None if it already has one.
+            int: The ID of the newly created venue.
+
+        Raises:
+            ValueError: If the venue already has an ID (use update instead).
         """
         if venue.venue_id is not None:
-            raise ValueError(
-                "Cannot save a Venue that already has an ID. Use update insteade."
-            )
+            raise ValueError("Cannot save a Venue that already has an ID.")
 
         sql_query = """
-        INSERT INTO venues (venue_name, address, supervisor_name, supervisor_email, supervisor_phone) 
+        INSERT INTO venues (venue_name, address, supervisor_name, supervisor_email, supervisor_phone)
         VALUES (?, ?, ?, ?, ?)
         """
         data = (
@@ -144,6 +119,10 @@ class VenueRepository:
         )
         self.cursor.execute(sql_query, data)
         self.conn.commit()
+
+        if self.cursor.lastrowid is None:
+            raise RuntimeError("Database failed to generate an ID.")
+
         return self.cursor.lastrowid
 
     def update(self, venue: Venue) -> bool:
@@ -184,7 +163,6 @@ class VenueRepository:
         if not venue_id:
             raise ValueError("ID inválido para deleção.")
 
-        # SQL direto usando o ID
         sql_query = "DELETE FROM venues WHERE venue_id = ?"
         self.cursor.execute(sql_query, (venue_id,))
         self.conn.commit()

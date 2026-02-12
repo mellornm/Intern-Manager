@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from dataclasses import dataclass
 
 
@@ -27,3 +27,25 @@ class Document:
     feedback: Optional[str] = None
     last_update: Optional[str] = None
     document_id: Optional[int] = None
+
+    @classmethod
+    def from_db_row(cls, row: Any) -> Optional["Document"]:
+        """
+        Creates a Document instance from a database row.
+
+        Args:
+            row (Any): A dictionary-like object representing a row from the database's 'documents' table.
+
+        Returns:
+            Optional[Document]: A Document instance populated with data from the row, or None if the input row is None.
+        """
+        if not row:
+            return None
+        return cls(
+            document_id=row["document_id"],
+            intern_id=row["intern_id"],
+            document_name=row["document_name"],
+            status=row["status"],
+            feedback=row["feedback"],
+            last_update=row["last_update"],
+        )

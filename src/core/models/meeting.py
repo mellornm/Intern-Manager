@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from dataclasses import dataclass
 
 
@@ -21,3 +21,24 @@ class Meeting:
     meeting_date: str
     is_intern_present: bool
     meeting_id: Optional[int] = None
+
+    @classmethod
+    def from_db_row(cls, row: Any) -> Optional["Meeting"]:
+        """
+        Creates a Meeting instance from a database row.
+
+        Args:
+            row (Any): A dictionary-like object representing a row from the database's 'meetings' table.
+
+        Returns:
+            Optional[Meeting]: A Meeting instance populated with data from the row, or None if the input row is None.
+        """
+        if not row:
+            return None
+        return cls(
+            meeting_id=row["meeting_id"],
+            intern_id=row["intern_id"],
+            meeting_date=row["meeting_date"],
+            # O Python converte 1 -> True e 0 -> False automaticamente
+            is_intern_present=bool(row["is_intern_present"]),
+        )

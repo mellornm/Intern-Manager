@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from dataclasses import dataclass
 
 
@@ -26,3 +26,23 @@ class EvaluationCriteria:
     description: str = ""
     weight: float = 1.0
     criteria_id: Optional[int] = None
+
+    @classmethod
+    def from_db_row(cls, row: Any) -> Optional["EvaluationCriteria"]:
+        """
+        Creates a Evaluation Criteria instance from a database row.
+
+        Args:
+            row (Any): A dictionary-like object representing a row from the database's 'evaluation_createria' table.
+
+        Returns:
+            Optional[EvaluationCriteria]: An EvaluationCriteria instance populated with data from the row, or None if the input row is None.
+        """
+        if not row:
+            return None
+        return cls(
+            criteria_id=row["criteria_id"],
+            name=row["name"],
+            description=row["description"],
+            weight=float(row["weight"]),  # Garante float no peso
+        )

@@ -42,61 +42,51 @@ class GradeRepository:
         The results are ordered by the last update timestamp in descending order.
 
         Returns:
-            List[Grade]: A list of all recorded grades.
+            List[Grade]: A list of all Grade objects.
         """
         sql_query = """
-        SELECT grade_id, intern_id, criteria_id, value, last_update
-        FROM grades
+        SELECT grade_id, intern_id, criteria_id, value, last_update 
+        FROM grades 
         ORDER BY last_update DESC
         """
         self.cursor.execute(sql_query)
         results = self.cursor.fetchall()
 
-        return [
-            Grade(
-                grade_id=row["grade_id"],
-                intern_id=row["intern_id"],
-                criteria_id=row["criteria_id"],
-                value=row["value"],
-                last_update=row["last_update"],
-            )
-            for row in results
-        ]
+        grades = []
+        for row in results:
+            grade = Grade.from_db_row(row)
+            if grade:
+                grades.append(grade)
+        return grades
 
     def get_by_intern_id(self, intern_id: int) -> List[Grade]:
         """
-        Retrieves all grades for a specific intern (The Report Card).
+        Retrieves all grades associated with a specific intern.
 
         Args:
-            intern_id (int): The unique identifier of the intern.
+            intern_id (int): The ID of the intern.
 
         Returns:
-            List[Grade]: A list of Grade objects associated with the intern,
-            ordered by criteria ID.
+            List[Grade]: A list of Grade objects for that intern.
         """
         sql_query = """
-        SELECT grade_id, intern_id, criteria_id, value, last_update
-        FROM grades
+        SELECT grade_id, intern_id, criteria_id, value, last_update 
+        FROM grades 
         WHERE intern_id = ?
-        ORDER BY criteria_id ASC
         """
         self.cursor.execute(sql_query, (intern_id,))
         results = self.cursor.fetchall()
 
-        return [
-            Grade(
-                grade_id=row["grade_id"],
-                intern_id=row["intern_id"],
-                criteria_id=row["criteria_id"],
-                value=row["value"],
-                last_update=row["last_update"],
-            )
-            for row in results
-        ]
+        grades = []
+        for row in results:
+            grade = Grade.from_db_row(row)
+            if grade:
+                grades.append(grade)
+        return grades
 
     def get_by_id(self, grade_id: int) -> Optional[Grade]:
         """
-        Retrieves a grade by its unique database identifier.
+        Retrieves a single grade by its ID.
 
         Args:
             grade_id (int): The unique identifier of the grade.
@@ -105,38 +95,28 @@ class GradeRepository:
             Optional[Grade]: The Grade object if found, otherwise None.
         """
         sql_query = """
-        SELECT grade_id, intern_id, criteria_id, value, last_update
-        FROM grades
+        SELECT grade_id, intern_id, criteria_id, value, last_update 
+        FROM grades 
         WHERE grade_id = ?
         """
         self.cursor.execute(sql_query, (grade_id,))
         row = self.cursor.fetchone()
 
-        if row is None:
-            return None
-
-        return Grade(
-            grade_id=row["grade_id"],
-            intern_id=row["intern_id"],
-            criteria_id=row["criteria_id"],
-            value=row["value"],
-            last_update=row["last_update"],
-        )
+        return Grade.from_db_row(row)
 
     def save(self, grade: Grade) -> int:
         """
-        Persists a new Grade entity.
+        Persists a new Grade entity to the database.
 
         Args:
-            grade (Grade): The grade entity to save. Must not have an ID yet.
+            grade (Grade): The entity to be saved.
 
         Returns:
-            int: The unique identifier (primary key) of the newly created record.
+            int: The ID of the newly created grade.
 
         Raises:
-            ValueError: If the grade object already has an assigned ID.
-            RuntimeError: If the database fails to generate an ID.
-            sqlite3.IntegrityError: If a duplicate (intern_id, criteria_id) exists.
+            ValueError: If the grade object already has an ID.
+            RuntimeError: If the database fails to return the new ID.
         """
         if grade.grade_id is not None:
             raise ValueError(
@@ -190,6 +170,18 @@ class GradeRepository:
         return self.cursor.rowcount > 0
 
     def delete(self, grade_id: int) -> bool:
+        """
+        Permanently deletes a Grade record by its ID.
+
+        Args:
+            grade_id (int): The unique identifier of the grade to delete.
+
+        Returns:
+            bool: True if the deletion was successful (row removed), False otherwise.
+
+        Raises:
+            ValueError: If the grade_id is invalid (0 or None).
+        """
         if not grade_id:
             raise ValueError("ID inválido para deleção.")
 

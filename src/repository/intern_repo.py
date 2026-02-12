@@ -1,11 +1,34 @@
-from data.database import DatabaseConnector
-from core.models.intern import Intern
-from typing import Optional, List
 from sqlite3 import Connection, Cursor, Row
+from typing import List, Optional
+
+from core.models.intern import Intern
+from data.database import DatabaseConnector
 
 
 class InternRepository:
+    """
+    Repository responsible for persistence and retrieval of Intern entities.
+
+    This class encapsulates database operations for interns, mapping directly
+    to the `interns` table. It handles creation, reading, updating, and deletion
+    of intern records.
+
+    Attributes:
+        db (DatabaseConnector): The database connector instance.
+        conn (Connection): Active SQLite connection.
+        cursor (Cursor): Active SQLite cursor.
+    """
+
     def __init__(self, db: DatabaseConnector):
+        """
+        Initializes the repository with an active database connection.
+
+        Args:
+            db (DatabaseConnector): An initialized connector with an open connection.
+
+        Raises:
+            RuntimeError: If the connector does not hold a valid connection or cursor.
+        """
         self.db = db
         if db.conn is None or db.cursor is None:
             raise RuntimeError(
@@ -14,33 +37,22 @@ class InternRepository:
         self.conn: Connection = db.conn
         self.cursor: Cursor = db.cursor
 
-        # GARANTIA: Força o modo de dicionário para não dependermos da ordem das colunas
         self.conn.row_factory = Row
 
-    def _parse_row(self, row: Row) -> Intern:
-        """Converte linha do banco para Objeto Intern de forma segura."""
-        return Intern(
-            intern_id=row["intern_id"],
-            name=row["name"],
-            registration_number=row["registration_number"],
-            term=row["term"],
-            email=row["email"],
-            start_date=row["start_date"],
-            end_date=row["end_date"],
-            working_days=row["working_days"],
-            working_hours=row["working_hours"],
-            venue_id=row["venue_id"],
-        )
-
     def get_all(self) -> List[Intern]:
-        # Selecionamos explicitamente para garantir que as colunas existam
         sql_query = """
         SELECT intern_id, name, registration_number, term, email, start_date, end_date, 
         working_days, working_hours, venue_id FROM interns ORDER BY name COLLATE NOCASE ASC
         """
         self.cursor.execute(sql_query)
         results = self.cursor.fetchall()
-        return [self._parse_row(row) for row in results]
+
+        interns = []
+        for row in results:
+            obj = Intern.from_db_row(row)
+            if obj is not None:
+                interns.append(obj)
+        return interns
 
     def get_by_id(self, intern_id: int) -> Optional[Intern]:
         sql_query = """
@@ -49,7 +61,7 @@ class InternRepository:
         """
         self.cursor.execute(sql_query, (intern_id,))
         row = self.cursor.fetchone()
-        return self._parse_row(row) if row else None
+        return Intern.from_db_row(row)
 
     def get_by_registration_number(self, ra: str) -> Optional[Intern]:
         sql_query = """
@@ -58,7 +70,7 @@ class InternRepository:
         """
         self.cursor.execute(sql_query, (ra,))
         row = self.cursor.fetchone()
-        return self._parse_row(row) if row else None
+        return Intern.from_db_row(row)
 
     def save(self, intern: Intern) -> int:
         if intern.intern_id is not None:

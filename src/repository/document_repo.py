@@ -5,6 +5,18 @@ from typing import List, Optional
 
 
 class DocumentRepository:
+    """
+    Repository responsible for persistence and retrieval of Document entities.
+
+    This class encapsulates database operations for the documents associated with an Intern.
+    It maps directly to the `documents` table.
+
+    Attributes:
+        db (DatabaseConnector): The database connector instance.
+        conn (Connection): Active SQLite connection.
+        cursor (Cursor): Active SQLite cursor.
+    """
+
     def __init__(self, db: DatabaseConnector):
         self.db = db
         if db.conn is None or db.cursor is None:
@@ -15,54 +27,55 @@ class DocumentRepository:
         self.cursor: Cursor = db.cursor
 
     def get_by_intern_id(self, intern_id: int) -> List[Document]:
-        sql_query = "SELECT document_id, intern_id, document_name, status, feedback FROM documents WHERE intern_id = ?"
+        sql_query = """
+        SELECT document_id, intern_id, document_name, status, feedback, last_update 
+        FROM documents 
+        WHERE intern_id = ?
+        """
         self.cursor.execute(sql_query, (intern_id,))
         results = self.cursor.fetchall()
-        return [
-            Document(
-                document_id=row["document_id"],
-                intern_id=row["intern_id"],
-                document_name=row["document_name"],
-                status=row["status"],
-                feedback=row["feedback"],
-            )
-            for row in results
-        ]
+
+        documents = []
+        for row in results:
+            doc = Document.from_db_row(row)
+            if doc:
+                documents.append(doc)
+        return documents
 
     def get_by_id(self, document_id: int) -> Optional[Document]:
-        sql_query = "SELECT document_id, intern_id, document_name, status, feedback FROM documents WHERE document_id = ?"
+        sql_query = """
+        SELECT document_id, intern_id, document_name, status, feedback, last_update 
+        FROM documents 
+        WHERE document_id = ?
+        """
         self.cursor.execute(sql_query, (document_id,))
         row = self.cursor.fetchone()
-        if row is None:
-            return None
-        return Document(
-            document_id=row["document_id"],
-            intern_id=row["intern_id"],
-            document_name=row["document_name"],
-            status=row["status"],
-            feedback=row["feedback"],
-        )
 
-    def count_pending(self) -> int:
-        """Retorna o total de documentos com status = Pendente."""
-        sql_query = "SELECT COUNT(*) FROM documents WHERE status = 'Pendente' "
-        self.cursor.execute(sql_query)
-        result = self.cursor.fetchone()
-        return result[0] if result else 0
+        return Document.from_db_row(row)
 
     def save(self, document: Document) -> int:
         if document.document_id is not None:
-            raise ValueError("Cannot save a document that already has an ID.")
-        sql_query = "INSERT INTO documents (intern_id, document_name, status, feedback) VALUES (?, ?, ?, ?)"
+            raise ValueError(
+                "Cannot save a document that already has an ID. Use update instead."
+            )
+
+        sql_query = """
+            INSERT INTO documents (intern_id, document_name, status, feedback) 
+            VALUES (?, ?, ?, ?)
+        """
         data = (
             document.intern_id,
             document.document_name,
             document.status,
             document.feedback,
         )
+
         self.cursor.execute(sql_query, data)
         self.conn.commit()
-        return self.cursor.lastrowid  # type: ignore
+
+        if self.cursor.lastrowid is None:
+            raise RuntimeError("Database failed to generate an ID.")
+        return self.cursor.lastrowid
 
     def update(self, document: Document) -> bool:
         if document.document_id is None:
@@ -92,7 +105,6 @@ class DocumentRepository:
         if not document_id:
             raise ValueError("ID inválido para deleção.")
 
-        # SQL direto usando o ID
         sql_query = "DELETE FROM documents WHERE document_id = ?"
         self.cursor.execute(sql_query, (document_id,))
         self.conn.commit()

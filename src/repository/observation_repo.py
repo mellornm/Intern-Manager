@@ -43,96 +43,72 @@ class ObservationRepository:
         showing the most recent notes first.
 
         Returns:
-            List[Observation]: A list of all recorded observations.
+            List[Observation]: A list of all Observation objects.
         """
-        sql_query = """
-        SELECT observation_id, intern_id, observation, last_update
-        FROM observations
-        ORDER BY last_update DESC
-        """
-
+        sql_query = "SELECT observation_id, intern_id, observation, last_update FROM observations ORDER BY last_update DESC"
         self.cursor.execute(sql_query)
         results = self.cursor.fetchall()
 
-        observations: List[Observation] = []
-
+        observations = []
         for row in results:
-            observations.append(
-                Observation(
-                    observation_id=row["observation_id"],
-                    intern_id=row["intern_id"],
-                    observation=row["observation"],
-                    last_update=row["last_update"],
-                )
-            )
-
+            obs = Observation.from_db_row(row)
+            if obs:
+                observations.append(obs)
         return observations
+
+    def get_by_intern_id(self, intern_id: int) -> List[Observation]:
+        """
+        Retrieves all observations associated with a specific intern.
+
+        Args:
+            intern_id (int): The ID of the intern.
+
+        Returns:
+            List[Observation]: A list of Observation objects for that intern.
+        """
+        sql_query = "SELECT observation_id, intern_id, observation, last_update FROM observations WHERE intern_id = ? ORDER BY last_update DESC"
+        self.cursor.execute(sql_query, (intern_id,))
+        results = self.cursor.fetchall()
+
+        observations = []
+        for row in results:
+            obs = Observation.from_db_row(row)
+            if obs:
+                observations.append(obs)
+        return observations
+
+    # Alias para compatibilidade com códigos que usam o nome antigo
+    get_intern_observations = get_by_intern_id
 
     def get_by_id(self, observation_id: int) -> Optional[Observation]:
         """
-        Retrieves a observation by its unique database identifier.
+        Retrieves a single observation by its ID.
 
         Args:
-            observation_id (int): The unique identifier of the observation.
+            observation_id (int): The unique identifier.
 
         Returns:
             Optional[Observation]: The Observation object if found, otherwise None.
         """
-        sql_query = """
-        SELECT observation_id, intern_id, observation, last_update
-        FROM observations 
-        WHERE observation_id = ?
-        """
-
+        sql_query = "SELECT observation_id, intern_id, observation, last_update FROM observations WHERE observation_id = ?"
         self.cursor.execute(sql_query, (observation_id,))
         row = self.cursor.fetchone()
 
-        if row is None:
-            return None
-
-        return Observation(
-            observation_id=row["observation_id"],
-            intern_id=row["intern_id"],
-            observation=row["observation"],
-            last_update=row["last_update"],
-        )
-
-    def get_by_intern_id(self, intern_id: int) -> List[Observation]:
-        """
-        Retrieves all observations for a specific intern.
-        """
-        sql_query = """
-            SELECT observation_id, intern_id, observation, last_update
-            FROM observations
-            WHERE intern_id = ?
-            ORDER BY last_update DESC
-            """
-        self.cursor.execute(sql_query, (intern_id,))
-        results = self.cursor.fetchall()
-
-        return [
-            Observation(
-                observation_id=row["observation_id"],
-                intern_id=row["intern_id"],
-                observation=row["observation"],
-                last_update=row["last_update"],
-            )
-            for row in results
-        ]
+        return Observation.from_db_row(row)
 
     def save(self, observation: Observation) -> int:
         """
-        Persists a new Observation entity in the database.
+        Persists a new Observation entity to the database.
 
         Args:
-            observation (Observation): The entity to save. Must not have an ID yet.
+            observation (Observation): The entity to be saved.
 
         Returns:
-            int: The unique identifier (primary key) of the newly created record.
+            int: The ID of the newly created observation.
 
         Raises:
-            ValueError: If the observation object already has an assigned ID.
-            RuntimeError: If the database fails to generate an ID.
+            ValueError: If the observation object already has an ID.
+            RuntimeError: If the database fails to return the new ID.
         """
         if observation.observation_id is not None:
             raise ValueError(
@@ -140,14 +116,10 @@ class ObservationRepository:
             )
 
         sql_query = """
-        INSERT INTO observations (observation, intern_id)
+        INSERT INTO observations (intern_id, observation)
         VALUES (?, ?)
         """
-
-        data = (
-            observation.observation,
-            observation.intern_id,
-        )
+        data = (observation.intern_id, observation.observation)
 
         self.cursor.execute(sql_query, data)
         self.conn.commit()
@@ -156,7 +128,6 @@ class ObservationRepository:
             raise RuntimeError(
                 "Database failed to generate an ID for the new observation."
             )
-
         return self.cursor.lastrowid
 
     def update(self, observation: Observation) -> bool:
@@ -195,6 +166,18 @@ class ObservationRepository:
         return self.cursor.rowcount > 0
 
     def delete(self, observation_id: int) -> bool:
+        """
+        Permanently deletes an Observation record by its ID.
+
+        Args:
+            observation_id (int): The unique identifier of the observation.
+
+        Returns:
+            bool: True if the deletion was successful.
+
+        Raises:
+            ValueError: If the observation_id is invalid.
+        """
         if not observation_id:
             raise ValueError("ID inválido para deleção.")
 

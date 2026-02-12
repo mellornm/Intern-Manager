@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from dataclasses import dataclass
 
 
@@ -27,3 +27,24 @@ class Grade:
     value: float
     grade_id: Optional[int] = None
     last_update: Optional[str] = None
+
+    @classmethod
+    def from_db_row(cls, row: Any) -> Optional["Grade"]:
+        """
+        Creates a Grade instance from a database row.
+
+        Args:
+            row (Any): A dictionary-like object representing a row from the database's 'grades' table.
+
+        Returns:
+            Optional[Grade]: A Grade instance populated with data from the row, or None if the input row is None.
+        """
+        if not row:
+            return None
+        return cls(
+            grade_id=row["grade_id"],
+            intern_id=row["intern_id"],
+            criteria_id=row["criteria_id"],
+            value=float(row["value"]),
+            last_update=row["last_update"],
+        )

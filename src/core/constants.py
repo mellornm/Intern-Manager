@@ -1,5 +1,4 @@
-# Lista padrão de documentos que todo estagiário deve ter ao ser cadastrado.
-
+# A default list of document names required for interns.
 DEFAULT_DOCUMENTS_LIST = [
     "Contrato de Estágio",
     "Ficha de Frequência",

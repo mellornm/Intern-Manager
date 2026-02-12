@@ -1,7 +1,8 @@
-from data.database import DatabaseConnector
-from core.models.evaluation_criteria import EvaluationCriteria
-from typing import Optional, List
 from sqlite3 import Connection, Cursor
+from typing import List, Optional
+
+from core.models.evaluation_criteria import EvaluationCriteria
+from data.database import DatabaseConnector
 
 
 class EvaluationCriteriaRepository:
@@ -40,33 +41,25 @@ class EvaluationCriteriaRepository:
         """
         Retrieves all evaluation criteria stored in the database.
 
-        The results are ordered alphabetically by the criteria name to facilitate
-        UI rendering.
-
         Returns:
-            List[EvaluationCriteria]: A list of all available criteria.
+            List[EvaluationCriteria]: A list of all criteria objects.
         """
-        sql_query = """
-        SELECT criteria_id, name, description, weight
-        FROM evaluation_criteria
-        ORDER BY name ASC
-        """
+        sql_query = (
+            "SELECT criteria_id, name, description, weight FROM evaluation_criteria"
+        )
         self.cursor.execute(sql_query)
         results = self.cursor.fetchall()
 
-        return [
-            EvaluationCriteria(
-                criteria_id=row["criteria_id"],
-                name=row["name"],
-                description=row["description"],
-                weight=row["weight"],
-            )
-            for row in results
-        ]
+        criteria_list = []
+        for row in results:
+            criteria = EvaluationCriteria.from_db_row(row)
+            if criteria:
+                criteria_list.append(criteria)
+        return criteria_list
 
     def get_by_id(self, criteria_id: int) -> Optional[EvaluationCriteria]:
         """
-        Retrieves a single criteria by its unique database identifier.
+        Retrieves a single evaluation criteria by its ID.
 
         Args:
             criteria_id (int): The unique identifier of the criteria.
@@ -74,37 +67,25 @@ class EvaluationCriteriaRepository:
         Returns:
             Optional[EvaluationCriteria]: The criteria object if found, otherwise None.
         """
-        sql_query = """
-        SELECT criteria_id, name, description, weight
-        FROM evaluation_criteria
-        WHERE criteria_id = ?
-        """
+        sql_query = "SELECT criteria_id, name, description, weight FROM evaluation_criteria WHERE criteria_id = ?"
         self.cursor.execute(sql_query, (criteria_id,))
         row = self.cursor.fetchone()
 
-        if row is None:
-            return None
-
-        return EvaluationCriteria(
-            criteria_id=row["criteria_id"],
-            name=row["name"],
-            description=row["description"],
-            weight=row["weight"],
-        )
+        return EvaluationCriteria.from_db_row(row)
 
     def save(self, criteria: EvaluationCriteria) -> int:
         """
-        Persists a new EvaluationCriteria entity.
+        Persists a new EvaluationCriteria entity to the database.
 
         Args:
-            criteria (EvaluationCriteria): The entity to save. Must not have an ID yet.
+            criteria (EvaluationCriteria): The entity to be saved.
 
         Returns:
-            int: The unique identifier (primary key) of the newly created record.
+            int: The ID of the newly created criteria.
 
         Raises:
-            ValueError: If the criteria object already has an assigned ID.
-            RuntimeError: If the database fails to return the last row ID.
+            ValueError: If the criteria object already has an ID.
+            RuntimeError: If the database fails to return the new ID.
         """
         if criteria.criteria_id is not None:
             raise ValueError(
@@ -145,7 +126,8 @@ class EvaluationCriteriaRepository:
 
         sql_query = """
         UPDATE evaluation_criteria SET
-            name = ?, description = ?, weight = ?
+            name = ?, description = ?, weight = ?,
+            last_update = datetime('now', 'localtime')
         WHERE criteria_id = ?
         """
         data = (
@@ -160,10 +142,21 @@ class EvaluationCriteriaRepository:
         return self.cursor.rowcount > 0
 
     def delete(self, criteria_id: int) -> bool:
+        """
+        Deletes an evaluation criteria record from the database by its ID.
+
+        Args:
+            criteria_id (int): The unique identifier of the criteria to delete.
+
+        Returns:
+            bool: True if the deletion was successful (one row deleted), False otherwise.
+
+        Raises:
+            ValueError: If an invalid or non-positive criteria_id is provided.
+        """
         if not criteria_id:
             raise ValueError("ID inválido para deleção.")
 
-        # SQL direto usando o ID
         sql_query = "DELETE FROM evaluation_criteria WHERE criteria_id = ?"
         self.cursor.execute(sql_query, (criteria_id,))
         self.conn.commit()

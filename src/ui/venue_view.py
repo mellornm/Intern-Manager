@@ -198,4 +198,8 @@ class VenueView(QWidget):
                 self.service.delete_venue(v)
                 self.refresh_data()
             except Exception as e:
-                QMessageBox.critical(self, "Erro", str(e))
+                QMessageBox.critical(
+                    self,
+                    "Erro",
+                    str(e) + "\nVerifique se existem alunos vinculados ao local",
+                )

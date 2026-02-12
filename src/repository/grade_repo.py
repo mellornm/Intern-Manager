@@ -189,24 +189,12 @@ class GradeRepository:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-    def delete(self, grade: Grade) -> bool:
-        """
-        Permanently deletes a Grade record.
+    def delete(self, grade_id: int) -> bool:
+        if not grade_id:
+            raise ValueError("ID inválido para deleção.")
 
-        Args:
-            grade (Grade): The grade entity to delete. Must have an ID.
-
-        Returns:
-            bool: True if the deletion was successful, False otherwise.
-
-        Raises:
-            ValueError: If the grade object does not have an ID.
-        """
-        if grade.grade_id is None:
-            raise ValueError("Cannot delete a grade without an ID.")
-
+        # SQL direto usando o ID
         sql_query = "DELETE FROM grades WHERE grade_id = ?"
-
-        self.cursor.execute(sql_query, (grade.grade_id,))
+        self.cursor.execute(sql_query, (grade_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0

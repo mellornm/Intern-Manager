@@ -78,16 +78,25 @@ class BaseService(Generic[T]):
         """
         return self.repo.get_by_id(entity_id)
 
-    def delete(self, data: T, entity_name: str) -> bool:
-        """
-        Validates the existence of an ID and requests deletion from the repository.
+    def delete(self, data_or_id: Any, entity_name: str) -> bool:
+        pk = 0
+        print(
+            f"DEBUG DELETE: Tentando deletar {entity_name}. Dado recebido: {data_or_id}"
+        )  # ADD ISSO
 
-        Args:
-            data (T): The entity instance to be deleted.
-            entity_name (str): The name of the entity for ID resolution.
+        attr_name = f"{entity_name}_id"
+        if hasattr(data_or_id, attr_name):
+            pk = getattr(data_or_id, attr_name)
+        elif isinstance(data_or_id, int):
+            pk = data_or_id
+        else:
+            pk = getattr(data_or_id, "id", None)
 
-        Returns:
-            bool: True if deletion was successful, False otherwise.
-        """
-        self._ensure_has_id(data, entity_name)
-        return self.repo.delete(data)
+        print(f"DEBUG DELETE: ID extraído = {pk}")
+
+        if not pk:
+            raise ValueError(
+                f"Não foi possível encontrar um ID válido para deletar {entity_name}."
+            )
+
+        return self.repo.delete(pk)

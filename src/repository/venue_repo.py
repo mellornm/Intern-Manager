@@ -180,21 +180,12 @@ class VenueRepository:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-    def delete(self, venue: Venue) -> bool:
-        """
-        Deletes a Venue record.
+    def delete(self, venue_id: int) -> bool:
+        if not venue_id:
+            raise ValueError("ID inválido para deleção.")
 
-        Args:
-            venue (Venue): Venue entity to be deleted.
-
-        Returns:
-            bool: True if the record was deleted.
-        """
-        if venue.venue_id is None:
-            raise ValueError("Cannot delete a Venue without an ID.")
-
+        # SQL direto usando o ID
         sql_query = "DELETE FROM venues WHERE venue_id = ?"
-
-        self.cursor.execute(sql_query, (venue.venue_id,))
+        self.cursor.execute(sql_query, (venue_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0

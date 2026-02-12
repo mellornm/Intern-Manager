@@ -1,4 +1,4 @@
-def smart_tile(text: str) -> str:
+def smart_title(text: str) -> str:
     acronyms = ["SUS", "DNA", "RNA"]
     exceptions = ["da", "de", "do", "das", "dos", "e", "em"]
 

@@ -194,27 +194,12 @@ class ObservationRepository:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-    def delete(self, observation: Observation) -> bool:
-        """
-        Deletes a Observation record from the database.
+    def delete(self, observation_id: int) -> bool:
+        if not observation_id:
+            raise ValueError("ID inválido para deleção.")
 
-        Args:
-            observation (Observation): The entity to delete. Must have an ID.
-
-        Returns:
-            bool: True if the deletion was successful, False otherwise.
-
-        Raises:
-            ValueError: If the observation object does not have an ID.
-        """
-        if observation.observation_id is None:
-            raise ValueError("Cannot delete an observation without an ID.")
-
-        sql_query = """
-        DELETE FROM observations
-        WHERE observation_id = ?
-        """
-
-        self.cursor.execute(sql_query, (observation.observation_id,))
+        # SQL direto usando o ID
+        sql_query = "DELETE FROM observations WHERE observation_id = ?"
+        self.cursor.execute(sql_query, (observation_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0

@@ -88,11 +88,13 @@ class DocumentRepository:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-    def delete(self, document: Document) -> bool:
-        if document.document_id is None:
-            raise ValueError("Cannot delete a document without an ID.")
+    def delete(self, document_id: int) -> bool:
+        if not document_id:
+            raise ValueError("ID inválido para deleção.")
+
+        # SQL direto usando o ID
         sql_query = "DELETE FROM documents WHERE document_id = ?"
-        self.cursor.execute(sql_query, (document.document_id,))
+        self.cursor.execute(sql_query, (document_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0
 

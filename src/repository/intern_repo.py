@@ -120,15 +120,12 @@ class InternRepository:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-    def delete(self, intern: Intern) -> bool:
-        if intern.intern_id is None:
-            raise ValueError("Cannot delete an intern without an ID.")
+    def delete(self, intern_id: int) -> bool:
+        if not intern_id:
+            raise ValueError("ID inválido para deleção.")
 
-        # Deletar dependências (Documents, Meetings, Grades, Observations)
-        # O SQLite faria isso sozinho se ON DELETE CASCADE estiver ativo e PRAGMA foreign_keys = ON
-        # Mas por segurança, podemos deletar explicitamente ou confiar no CASCADE do seu create_db.sql
-
+        # SQL direto usando o ID
         sql_query = "DELETE FROM interns WHERE intern_id = ?"
-        self.cursor.execute(sql_query, (intern.intern_id,))
+        self.cursor.execute(sql_query, (intern_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0

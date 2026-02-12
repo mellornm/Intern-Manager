@@ -159,24 +159,12 @@ class EvaluationCriteriaRepository:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-    def delete(self, criteria: EvaluationCriteria) -> bool:
-        """
-        Permanently deletes a EvaluationCriteria record.
+    def delete(self, criteria_id: int) -> bool:
+        if not criteria_id:
+            raise ValueError("ID inválido para deleção.")
 
-        Args:
-            criteria (EvaluationCriteria): The entity to delete. Must have an ID.
-
-        Returns:
-            bool: True if the deletion was successful, False otherwise.
-
-        Raises:
-            ValueError: If the criteria object does not have an ID.
-        """
-        if criteria.criteria_id is None:
-            raise ValueError("Cannot delete a criteria without an ID.")
-
+        # SQL direto usando o ID
         sql_query = "DELETE FROM evaluation_criteria WHERE criteria_id = ?"
-
-        self.cursor.execute(sql_query, (criteria.criteria_id,))
+        self.cursor.execute(sql_query, (criteria_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0

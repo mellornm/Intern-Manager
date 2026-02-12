@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QPalette, QIcon
 import qtawesome as qta
 
 # Models & Services
@@ -53,6 +53,8 @@ from ui.dashboard_view import DashboardView
 from ui.delegates import StatusDelegate
 from ui.venue_view import VenueView
 from ui.criteria_view import CriteriaView
+
+from config import RESOURCES_DIR
 
 
 class MainWindow(QMainWindow):
@@ -86,7 +88,11 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("InternManager Pro 2026")
         self.setMinimumSize(1280, 800)
-        self.setWindowIcon(qta.icon("fa5s.notes-medical", color=COLORS["primary"]))
+        icon_path = RESOURCES_DIR / "app_icon.ico"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+        else:
+            self.setWindowIcon(qta.icon("fa5s.notes-medical", color=COLORS["primary"]))
 
         # Apply global stylesheet
         self.setStyleSheet(f"""

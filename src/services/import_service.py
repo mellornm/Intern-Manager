@@ -6,6 +6,7 @@ from services.document_service import DocumentService
 from core.models.venue import Venue
 from core.models.intern import Intern
 
+
 class ImportService:
     def __init__(
         self,
@@ -21,7 +22,9 @@ class ImportService:
     def read_file(self, filename: str | Path) -> None:
         path = Path(filename)
         if path.suffix.lower() not in [".xlsx", ".xls"]:
-            raise ValueError("O Importador Dedicado aceita apenas arquivos Excel (.xlsx) gerados pelo sistema.")
+            raise ValueError(
+                "O Importador Dedicado aceita apenas arquivos Excel (.xlsx) gerados pelo sistema."
+            )
 
         try:
             wb = openpyxl.load_workbook(path, data_only=True)
@@ -29,7 +32,7 @@ class ImportService:
 
             if "Venues" in sheet_names:
                 self._process_venues_sheet(wb["Venues"])
-            
+
             if "Interns" in sheet_names:
                 self._process_interns_sheet(wb["Interns"])
 
@@ -55,18 +58,18 @@ class ImportService:
 
     def _process_venues_sheet(self, sheet):
         venues_data = self._sheet_to_dict_list(sheet)
-        
+
         for row in venues_data:
             excel_id = row.get("venue_id")
             name = row.get("venue_name")
-            
+
             if not name:
                 continue
 
             existing_venue = None
             if excel_id:
                 existing_venue = self.venue_service.repo.get_by_id(excel_id)
-            
+
             if not existing_venue:
                 existing_venue = self.venue_service.repo.get_by_name(name)
 
@@ -75,7 +78,7 @@ class ImportService:
                 venue_name=name,
                 supervisor_name=row.get("supervisor_name"),
                 supervisor_email=row.get("supervisor_email"),
-                supervisor_phone=row.get("supervisor_phone")
+                supervisor_phone=row.get("supervisor_phone"),
             )
 
             if existing_venue:
@@ -93,7 +96,7 @@ class ImportService:
         for row in interns_data:
             excel_id = row.get("intern_id")
             name = row.get("name")
-            
+
             if not name:
                 continue
 
@@ -105,7 +108,7 @@ class ImportService:
                     real_venue_id = self._venue_id_map[excel_venue_id]
                 else:
                     real_venue_id = excel_venue_id
-            
+
             existing_intern = None
             if excel_id:
                 existing_intern = self.intern_service.repo.get_by_id(excel_id)
@@ -122,7 +125,7 @@ class ImportService:
                 end_date=row.get("end_date"),
                 working_hours=row.get("working_hours"),
                 working_days=row.get("working_days"),
-                term=row.get("term", "")
+                term=row.get("term", ""),
             )
 
             if existing_intern:

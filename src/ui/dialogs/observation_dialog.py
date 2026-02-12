@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -12,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 import qtawesome as qta
+
 
 from core.models.intern import Intern
 from core.models.observation import Observation
@@ -146,24 +149,33 @@ class ObservationDialog(QDialog):
     def load_data(self):
         if not self.intern.intern_id:
             return
+
         obs_list = self.service.get_observations_by_intern(self.intern.intern_id)
-
-        # Ordenar: mais recentes no final (estilo chat) ou no começo?
-        # Geralmente anotações recentes no topo é melhor para leitura rápida?
-        # Vamos manter ordem de inserção (antigo -> novo) que é padrão, ou inverta se preferir.
-
         self.list_widget.clear()
+
+        self.list_widget.setIconSize(QSize(20, 20))
+
         for obs in obs_list:
-            # Texto com data (se seu model tiver created_at, use-o. Se não, só o texto)
-            # Vou assumir só texto por enquanto.
+            data_display = "Data desconhecida"
+            if obs.last_update:
+                try:
+                    dt_obj = datetime.strptime(
+                        str(obs.last_update), "%Y-%m-%d %H:%M:%S"
+                    )
+                    data_display = dt_obj.strftime("%d/%m/%Y às %H:%M")
+                except ValueError:
+                    data_display = str(obs.last_update)
 
-            item = QListWidgetItem(obs.observation)
-            # Guardamos o objeto inteiro para deletar depois
+            texto_item = f"{data_display}\n{obs.observation}"
+
+            item = QListWidgetItem(texto_item)
+
+            item.setIcon(qta.icon("fa5s.calendar-alt", color=COLORS["secondary"]))
+
             item.setData(Qt.ItemDataRole.UserRole, obs)
-
             self.list_widget.addItem(item)
 
-        self.list_widget.scrollToBottom()
+        self.list_widget.scrollToTop()
 
     def add_observation(self):
         if not self.intern.intern_id:

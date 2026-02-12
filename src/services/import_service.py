@@ -1,4 +1,3 @@
-import csv
 import openpyxl
 from pathlib import Path
 from services.intern_service import InternService
@@ -6,7 +5,6 @@ from services.venue_service import VenueService
 from services.document_service import DocumentService
 from core.models.venue import Venue
 from core.models.intern import Intern
-
 
 class ImportService:
     def __init__(
@@ -18,183 +16,116 @@ class ImportService:
         self.intern_service = intern_service
         self.venue_service = venue_service
         self.document_service = document_service
+        self._venue_id_map = {}
 
     def read_file(self, filename: str | Path) -> None:
-        """
-        Lê um arquivo (CSV ou Excel) e importa os dados.
-        Detecta automaticamente o formato pela extensão.
-        """
         path = Path(filename)
-        suffix = path.suffix.lower()
-
-        rows = []
+        if path.suffix.lower() not in [".xlsx", ".xls"]:
+            raise ValueError("O Importador Dedicado aceita apenas arquivos Excel (.xlsx) gerados pelo sistema.")
 
         try:
-            if suffix == ".csv":
-                rows = self._read_csv(path)
-            elif suffix in [".xlsx", ".xls"]:
-                rows = self._read_excel(path)
-            else:
-                raise ValueError("Formato não suportado. Use .csv ou .xlsx")
+            wb = openpyxl.load_workbook(path, data_only=True)
+            sheet_names = wb.sheetnames
 
-            self._process_data(rows)
+            if "Venues" in sheet_names:
+                self._process_venues_sheet(wb["Venues"])
+            
+            if "Interns" in sheet_names:
+                self._process_interns_sheet(wb["Interns"])
 
         except Exception as e:
-            print(f"ERRO NA IMPORTAÇÃO: {e}")
+            print(f"CRITICAL ERROR NA IMPORTAÇÃO: {e}")
             raise e
 
-    def _read_csv(self, path: Path) -> list[dict]:
-        """Lê CSV tentando diferentes encodings."""
-        rows = []
-        encodings = ["utf-8-sig", "latin-1", "cp1252"]
+    def _sheet_to_dict_list(self, sheet) -> list[dict]:
+        rows = list(sheet.iter_rows(values_only=True))
+        if not rows:
+            return []
 
-        for enc in encodings:
-            try:
-                with open(path, "r", newline="", encoding=enc) as f:
-                    sample = f.read(2048)
-                    f.seek(0)
-                    try:
-                        dialect = csv.Sniffer().sniff(sample)
-                        delimiter = dialect.delimiter
-                    except csv.Error:
-                        delimiter = ";"
+        headers = [str(h).strip() for h in rows[0]]
+        data = []
 
-                    reader = csv.DictReader(f, delimiter=delimiter)
-                    rows = list(reader)
-                return rows
-            except UnicodeDecodeError:
-                continue
-            except Exception as e:
-                raise e
+        for row in rows[1:]:
+            row_data = dict(zip(headers, row))
+            clean_data = {k: v for k, v in row_data.items() if v is not None}
+            if clean_data:
+                data.append(clean_data)
 
-        raise ValueError("Não foi possível decodificar o arquivo CSV.")
+        return data
 
-    def _read_excel(self, path: Path) -> list[dict]:
-        """Lê Excel e usa a primeira linha como cabeçalho."""
-        wb = openpyxl.load_workbook(path, data_only=True)
-        sheet = wb.active
-
-        if sheet is None:
-            raise ValueError("O arquivo Excel não possui uma planilha ativa.")
-
-        rows = []
-        headers = []
-
-        # iter_rows retorna células. values_only=True retorna os valores direto.
-        for i, row in enumerate(sheet.iter_rows(values_only=True)):
-            if i == 0:
-                # Cabeçalho
-                headers = [
-                    str(cell).strip() if cell else f"col_{j}"
-                    for j, cell in enumerate(row)
-                ]
+    def _process_venues_sheet(self, sheet):
+        venues_data = self._sheet_to_dict_list(sheet)
+        
+        for row in venues_data:
+            excel_id = row.get("venue_id")
+            name = row.get("venue_name")
+            
+            if not name:
                 continue
 
-            row_dict = {}
-            has_data = False
-            for j, value in enumerate(row):
-                if j < len(headers):
-                    val_str = str(value).strip() if value is not None else ""
-                    row_dict[headers[j]] = val_str
-                    if val_str:
-                        has_data = True
+            existing_venue = None
+            if excel_id:
+                existing_venue = self.venue_service.repo.get_by_id(excel_id)
+            
+            if not existing_venue:
+                existing_venue = self.venue_service.repo.get_by_name(name)
 
-            if has_data:
-                rows.append(row_dict)
+            venue_obj = Venue(
+                venue_id=existing_venue.venue_id if existing_venue else None,
+                venue_name=name,
+                supervisor_name=row.get("supervisor_name"),
+                supervisor_email=row.get("supervisor_email"),
+                supervisor_phone=row.get("supervisor_phone")
+            )
 
-        return rows
+            if existing_venue:
+                self.venue_service.update_venue(venue_obj)
+                real_id = existing_venue.venue_id
+            else:
+                real_id = self.venue_service.add_new_venue(venue_obj)
 
-    def _process_data(self, rows: list[dict]):
-        processed_venues = set()
-        processed_interns = set()
-        venue_id_map: dict[str, int] = {}
-        line_count = 0
+            if excel_id and real_id:
+                self._venue_id_map[excel_id] = real_id
 
-        for row in rows:
-            line_count += 1
-            # Normaliza chaves para minúsculo para evitar erro de digitação no header
-            safe_row = {k.lower().strip(): v for k, v in row.items()}
+    def _process_interns_sheet(self, sheet):
+        interns_data = self._sheet_to_dict_list(sheet)
 
-            venue_name = safe_row.get("local", "").strip()
-            intern_name = safe_row.get("nome", "").strip()
-            ra_raw = safe_row.get("ra", "").strip()
-
-            if not intern_name or not ra_raw:
+        for row in interns_data:
+            excel_id = row.get("intern_id")
+            name = row.get("name")
+            
+            if not name:
                 continue
 
-            # --- Processa Local ---
-            current_venue_id: int | None = None
-            raw_sup_email = safe_row.get("email_supervisor")
-            email_sup = raw_sup_email.strip() if raw_sup_email else None
+            excel_venue_id = row.get("venue_id")
+            real_venue_id = None
 
-            # Tenta criar ou buscar local
-            if venue_name and venue_name not in processed_venues:
-                existing_venue = self.venue_service.repo.get_by_name(venue_name)
-                venue_data = {
-                    "venue_name": venue_name,
-                    "supervisor_name": safe_row.get("nome_supervisor", "").strip(),
-                    "supervisor_email": email_sup,
-                    "supervisor_phone": safe_row.get("telefone_supervisor", "").strip(),
-                }
-
-                if existing_venue:
-                    self.venue_service.update_venue(
-                        Venue(venue_id=existing_venue.venue_id, **venue_data)
-                    )
-                    current_venue_id = existing_venue.venue_id
+            if excel_venue_id:
+                if excel_venue_id in self._venue_id_map:
+                    real_venue_id = self._venue_id_map[excel_venue_id]
                 else:
-                    current_venue_id = self.venue_service.add_new_venue(
-                        Venue(**venue_data)
-                    )
+                    real_venue_id = excel_venue_id
+            
+            existing_intern = None
+            if excel_id:
+                existing_intern = self.intern_service.repo.get_by_id(excel_id)
+            if not existing_intern:
+                existing_intern = self.intern_service.repo.get_by_name(name)
 
-                # Fallback
-                if current_venue_id is None:
-                    v = self.venue_service.repo.get_by_name(venue_name)
-                    if v:
-                        current_venue_id = v.venue_id
-
-                if current_venue_id is not None:
-                    processed_venues.add(venue_name)
-                    venue_id_map[venue_name] = current_venue_id
-
-            elif venue_name:
-                current_venue_id = venue_id_map.get(venue_name)
-                if not current_venue_id:
-                    v = self.venue_service.repo.get_by_name(venue_name)
-                    if v:
-                        current_venue_id = v.venue_id
-
-            # --- Processa Aluno ---
-            if intern_name in processed_interns:
-                continue
-
-            existing_intern = self.intern_service.repo.get_by_name(intern_name)
-            intern_data = {
-                "name": intern_name,
-                "registration_number": str(ra_raw),
-                "venue_id": current_venue_id,
-                "term": safe_row.get("periodo", "").strip(),
-                "email": safe_row.get("email", None),
-                "start_date": safe_row.get("data_inicio", "").strip(),
-                "end_date": safe_row.get("data_fim", "").strip(),
-                "working_hours": safe_row.get("horarios", "").strip(),
-            }
+            intern_obj = Intern(
+                intern_id=existing_intern.intern_id if existing_intern else None,
+                name=name,
+                registration_number=str(row.get("registration_number", "")),
+                venue_id=real_venue_id,
+                email=row.get("email"),
+                start_date=row.get("start_date"),
+                end_date=row.get("end_date"),
+                working_hours=row.get("working_hours"),
+                working_days=row.get("working_days"),
+                term=row.get("term", "")
+            )
 
             if existing_intern:
-                self.intern_service.update_intern(
-                    Intern(intern_id=existing_intern.intern_id, **intern_data)
-                )
+                self.intern_service.update_intern(intern_obj)
             else:
-                new_intern_id = self.intern_service.add_new_intern(
-                    Intern(**intern_data)
-                )
-                # Cria documentos iniciais
-                if new_intern_id:
-                    try:
-                        self.document_service.create_initial_documents_batch(
-                            new_intern_id
-                        )
-                    except Exception:
-                        pass
-
-            processed_interns.add(intern_name)
+                self.intern_service.add_new_intern(intern_obj)

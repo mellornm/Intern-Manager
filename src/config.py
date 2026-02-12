@@ -88,16 +88,6 @@ SQL_PATH = RESOURCES_DIR / "create_db.sql"
 DB_DIR = USER_DATA_ROOT
 DB_PATH = DB_DIR / "interns.db"
 
-# --- Debug ---
-
-# if getattr(sys, "frozen", False):
-#    print(f"DEBUG: Rodando Congelado (Frozen)")
-#    print(f"DEBUG: App Root (_internal): {APP_ROOT}")
-#    print(f"DEBUG: Resources esperados: {RESOURCES_DIR}")
-#    print(f"DEBUG: SQL esperado: {SQL_PATH}")
-
-# Ensure the directory for the database exists before the app tries to use it.
-# This is especially important on the first run.
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 # Version

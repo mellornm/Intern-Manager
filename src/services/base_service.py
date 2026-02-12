@@ -80,9 +80,6 @@ class BaseService(Generic[T]):
 
     def delete(self, data_or_id: Any, entity_name: str) -> bool:
         pk = 0
-        print(
-            f"DEBUG DELETE: Tentando deletar {entity_name}. Dado recebido: {data_or_id}"
-        )  # ADD ISSO
 
         attr_name = f"{entity_name}_id"
         if hasattr(data_or_id, attr_name):
@@ -91,8 +88,6 @@ class BaseService(Generic[T]):
             pk = data_or_id
         else:
             pk = getattr(data_or_id, "id", None)
-
-        print(f"DEBUG DELETE: ID extraído = {pk}")
 
         if not pk:
             raise ValueError(

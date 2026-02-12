@@ -198,8 +198,14 @@ class VenueView(QWidget):
                 self.service.delete_venue(v)
                 self.refresh_data()
             except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    "Erro",
-                    str(e) + "\nVerifique se existem alunos vinculados ao local",
-                )
+                error_msg = str(e).lower()
+                if "foreign key" in error_msg or "constraint failed" in error_msg:
+                    detailed_msg = (
+                        f"Não é possível excluir '{v.venue_name}'.\n\n"
+                        "Existem estagiários vinculados a este local. "
+                        "Remova ou transfira os alunos antes de excluir o local de estágio."
+                    )
+                else:
+                    detailed_msg = f"Ocorreu um erro inesperado: {e}"
+
+                QMessageBox.critical(self, "Impossível Excluir", detailed_msg)

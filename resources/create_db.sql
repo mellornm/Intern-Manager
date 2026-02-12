@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS grades (
     grade_id INTEGER PRIMARY KEY AUTOINCREMENT,
     intern_id INTEGER NOT NULL,
     criteria_id INTEGER NOT NULL,
-    value REAL NOT NULL,
+    value REAL NOT NULL CHECK (value >= 0),
     last_update TEXT DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (intern_id) REFERENCES interns(intern_id) ON DELETE CASCADE,
     FOREIGN KEY (criteria_id) REFERENCES evaluation_criteria(criteria_id) ON DELETE RESTRICT,

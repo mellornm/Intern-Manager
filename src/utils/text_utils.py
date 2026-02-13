@@ -1,3 +1,7 @@
+import re
+import unicodedata
+
+
 def smart_title(text: str) -> str:
     """
     Formata strings para Title Case inteligente.
@@ -54,7 +58,7 @@ def smart_title(text: str) -> str:
 
         # Regra 1: A primeira palavra sempre recebe tratamento especial
         if i == 0:
-            # Se for sigla (ex: "SUS é importante"), mantém maiúsculo. Senão, capitaliza.
+            # Se for sigla mantém maiúsculo. Senão, capitaliza.
             if upper_word in acronyms:
                 final_words.append(upper_word)
             else:
@@ -73,3 +77,13 @@ def smart_title(text: str) -> str:
             final_words.append(word.capitalize())
 
     return " ".join(final_words)
+
+
+def sanitize_filename(text: str) -> str:
+    # 1. Normaliza unicode (tira acentos)
+    text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
+    # 2. Mantém apenas letras, números, hífens e underlines
+    text = re.sub(r"[^\w\s-]", "", text)
+    # 3. Troca espaços por underline
+    text = re.sub(r"[-\s]+", "_", text).strip("-_")
+    return text

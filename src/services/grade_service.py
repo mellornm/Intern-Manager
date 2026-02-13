@@ -90,7 +90,7 @@ class GradeService(BaseService[Grade]):
         self._validate_grade_value(grade)
         return self.repo.save(grade)
 
-    def update_grade(self, grade: Grade) -> bool:
+    def update_grade(self, grade) -> bool:
         """
         Validates and updates an existing grade.
 
@@ -101,8 +101,7 @@ class GradeService(BaseService[Grade]):
             bool: True if successful.
         """
         self._ensure_has_id(grade, "grade")
-        validate_required_fields(grade, REQUIRED_FIELDS)
-        self._validate_grade_value(grade)
+        self._validate_required_fields(grade)
         return self.repo.update(grade)
 
     def delete_grade(self, grade: Grade) -> bool:

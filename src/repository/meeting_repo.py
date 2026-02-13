@@ -150,3 +150,33 @@ class MeetingRepository:
         self.cursor.execute(sql_query, (meeting_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0
+
+    def update(self, meeting: Meeting) -> bool:
+        """
+        Atualiza um Meeting existente.
+
+        Args:
+            meeting (Meeting): Entidade com meeting_id preenchido.
+
+        Returns:
+            bool: True se alguma linha foi atualizada.
+        """
+        if meeting.meeting_id is None:
+            raise ValueError("Não é possível atualizar um meeting sem ID.")
+
+        sql_query = """
+        UPDATE meetings
+        SET intern_id = ?, meeting_date = ?, is_intern_present = ?
+        WHERE meeting_id = ?
+        """
+        present_int = 1 if meeting.is_intern_present else 0
+        data = (
+            meeting.intern_id,
+            meeting.meeting_date,
+            present_int,
+            meeting.meeting_id,
+        )
+
+        self.cursor.execute(sql_query, data)
+        self.conn.commit()
+        return self.cursor.rowcount > 0

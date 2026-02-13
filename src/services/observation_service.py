@@ -32,12 +32,6 @@ class ObservationService(BaseService[Observation]):
         """
         super().__init__(repo)
 
-    def get_intern_observations(self, intern_id: int):
-        """
-        Returns the list of observations for a specific intern.
-        """
-        return self.repo.get_by_intern_id(intern_id)
-
     def add_new_observation(self, observation: Observation):
         """
         Validates and adds a new observation to the system.

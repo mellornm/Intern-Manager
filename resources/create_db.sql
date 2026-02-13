@@ -54,6 +54,18 @@ CREATE TABLE IF NOT EXISTS meetings (
     FOREIGN KEY (intern_id) REFERENCES interns(intern_id) ON DELETE CASCADE
 );
 
+-- CREATE VISITS TABLE
+CREATE TABLE IF NOT EXISTS visits (
+    visit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    intern_id INTEGER NOT NULL,
+    venue_id INTEGER NOT NULL,
+    visit_date TEXT NOT NULL,
+    observation TEXT,
+    photo_path TEXT,
+    FOREIGN KEY(intern_id) REFERENCES interns(intern_id) ON DELETE CASCADE,
+    FOREIGN KEY(venue_id) REFERENCES venues(venue_id) ON DELETE CASCADE
+);
+
 -- CREATE EVALUATION CRITERIA TABLE
 CREATE TABLE IF NOT EXISTS evaluation_criteria (
     criteria_id INTEGER PRIMARY KEY AUTOINCREMENT,

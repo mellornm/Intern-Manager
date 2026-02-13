@@ -77,9 +77,6 @@ class ObservationRepository:
                 observations.append(obs)
         return observations
 
-    # Alias para compatibilidade com códigos que usam o nome antigo
-    get_intern_observations = get_by_intern_id
-
     def get_by_id(self, observation_id: int) -> Optional[Observation]:
         """
         Retrieves a single observation by its ID.

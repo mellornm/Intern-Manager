@@ -88,7 +88,7 @@ class VisitRepository:
             visit.visit_date,
             visit.observation,
             visit.photo_path,
-            visit.visit_id,  # <--- IMPORTANTE: O ID entra aqui no final
+            visit.visit_id,
         )
 
         self.cursor.execute(sql_query, data)

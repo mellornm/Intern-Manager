@@ -1,7 +1,7 @@
 from services.base_service import BaseService
 from core.models.evaluation_criteria import EvaluationCriteria
 from repository.evaluation_criteria_repo import EvaluationCriteriaRepository
-from utils.validations import validate_required_fields
+
 
 REQUIRED_FIELDS = {
     "name": "Nome do Critério",
@@ -56,7 +56,7 @@ class EvaluationCriteriaService(BaseService[EvaluationCriteria]):
             ValueError: If required fields are missing or weight is invalid.
         """
 
-        validate_required_fields(criteria, REQUIRED_FIELDS)
+        self._validate_required_fields(criteria)
 
         self._validate_weight(criteria)
 
@@ -77,7 +77,7 @@ class EvaluationCriteriaService(BaseService[EvaluationCriteria]):
         """
         self._ensure_has_id(criteria, "evaluation criteria")
 
-        validate_required_fields(criteria, REQUIRED_FIELDS)
+        self._validate_required_fields(criteria)
         self._validate_weight(criteria)
 
         return self.repo.update(criteria)

@@ -150,25 +150,8 @@ class ReportService:
         # Datas
         date_emission = datetime.now().strftime("%d/%m/%Y às %H:%M")
 
-        if intern.start_date:
-            try:
-                start_fmt = datetime.strptime(intern.start_date, "%Y-%m-%d").strftime(
-                    "%d/%m/%Y"
-                )
-            except ValueError:
-                start_fmt = intern.start_date
-        else:
-            start_fmt = "-"
-
-        if intern.end_date:
-            try:
-                end_fmt = datetime.strptime(intern.end_date, "%Y-%m-%d").strftime(
-                    "%d/%m/%Y"
-                )
-            except ValueError:
-                end_fmt = intern.end_date
-        else:
-            end_fmt = "-"
+        start_fmt = intern.formatted_start_date
+        end_fmt = intern.formatted_end_date
 
         local_data_sig = (
             f"{city_state}, {datetime.now().strftime('%d de %B de %Y')}"

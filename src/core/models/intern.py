@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
+from utils.validations import format_date_to_br
 
 
 @dataclass
@@ -78,16 +79,10 @@ class Intern:
     def formatted_start_date(self) -> str:
         if not self.start_date:
             return "-"
-        try:
-            return datetime.strptime(self.start_date, "%Y-%m-%d").strftime("%d/%m/%Y")
-        except ValueError:
-            return self.start_date
+        return format_date_to_br(self.start_date)
 
     @property
     def formatted_end_date(self) -> str:
         if not self.end_date:
             return "-"
-        try:
-            return datetime.strptime(self.end_date, "%Y-%m-%d").strftime("%d/%m/%Y")
-        except ValueError:
-            return self.end_date
+        return format_date_to_br(self.end_date)

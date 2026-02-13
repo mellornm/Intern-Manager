@@ -36,7 +36,7 @@ jobs:
       - name: Zip the Application
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/InternManager/* -DestinationPath dist/InternManager_Win.zip
+          Compress-Archive -Path dist/InternManager -DestinationPath dist/InternManager_Win.zip
 
       - name: Release Asset
         uses: softprops/action-gh-release@v1

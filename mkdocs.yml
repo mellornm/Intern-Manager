@@ -1,0 +1,52 @@
+site_name: Intern Manager Pro
+site_url: https://vonroderik.github.io/Intern-Manager/
+site_author: Rodrigo Noronha de Mello 
+site_description: Sistema de Gestão de Estágios e Visitas Técnicas.
+
+repo_name: Intern-Manager
+repo_url: https://github.com/vonroderik/Intern-Manager
+
+theme:
+  name: material
+  language: pt-BR
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Mudar para modo escuro
+    - scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Mudar para modo claro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  # --- Reativamos os ícones, mas os sem erro! ---
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Início: index.md
+  # --- AQUI ESTÁ O DOWNLOAD NO MENU ---
+  - Download e Instalação: install.md
+  - Guia do Usuário:
+      - Cadastro de Discentes: user-guide/interns.md
+      - Visitas Técnicas: user-guide/visits.md
+      - Relatórios: user-guide/reports.md

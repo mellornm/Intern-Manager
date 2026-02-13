@@ -27,33 +27,37 @@ from PySide6.QtGui import QColor, QPalette, QIcon
 import qtawesome as qta
 
 # Models & Services
-from services.intern_service import InternService
 from services.document_service import DocumentService
-from services.meeting_service import MeetingService
-from services.venue_service import VenueService
 from services.evaluation_criteria_service import EvaluationCriteriaService
 from services.grade_service import GradeService
 from services.import_service import ImportService
+from services.intern_service import InternService
+from services.meeting_service import MeetingService
 from services.observation_service import ObservationService
 from services.report_service import ReportService
+from services.venue_service import VenueService
+from services.visit_service import VisitService
 
 # Dialogs
-from ui.dialogs.intern_dialog import InternDialog
+from ui.dialogs.batch_meeting_dialog import BatchMeetingDialog
 from ui.dialogs.document_dialog import DocumentDialog
 from ui.dialogs.grade_dialog import GradeDialog
+from ui.dialogs.intern_dialog import InternDialog
 from ui.dialogs.meeting_dialog import MeetingDialog
 from ui.dialogs.observation_dialog import ObservationDialog
 from ui.dialogs.report_dialog import ReportDialog
 from ui.dialogs.settings_dialog import SettingsDialog
-from ui.dialogs.batch_meeting_dialog import BatchMeetingDialog
+from ui.dialogs.visit_dialog import VisitDialog
+
 
 # Styles and Components
-from ui.styles import COLORS
+from ui.criteria_view import CriteriaView
 from ui.dashboard_view import DashboardView
 from ui.delegates import StatusDelegate
+from ui.styles import COLORS
 from ui.venue_view import VenueView
-from ui.criteria_view import CriteriaView
 
+# Config
 from config import RESOURCES_DIR
 
 
@@ -67,6 +71,7 @@ class MainWindow(QMainWindow):
         grade_service: GradeService,
         observation_service: ObservationService,
         venue_service: VenueService,
+        visit_service: VisitService,
         document_service: DocumentService,
         meeting_service: MeetingService,
         report_service: ReportService,
@@ -85,6 +90,7 @@ class MainWindow(QMainWindow):
         self.report_service = report_service
         self.import_service = import_service
         self.export_service = export_service
+        self.visit_service = visit_service
 
         self.setWindowTitle("InternManager Pro 2026")
         self.setMinimumSize(1280, 800)
@@ -397,6 +403,7 @@ class MainWindow(QMainWindow):
             make_btn("Documentos", "fa5s.folder-open", self.open_documents)
         )
         layout.addWidget(make_btn("Reuniões", "fa5s.calendar-alt", self.open_meetings))
+        layout.addWidget(make_btn("Visitas", "fa5s.map-marked-alt", self.open_visits))
         layout.addWidget(make_btn("Observações", "fa5s.eye", self.open_observations))
 
         layout.addStretch()
@@ -553,6 +560,13 @@ class MainWindow(QMainWindow):
             MeetingDialog(self, i, self.meeting_service).exec()
             self.page_dashboard.refresh_data()
 
+    def open_visits(self):
+        """Abre o diálogo de gestão de Visitas Técnicas."""
+        i = self.get_selected_intern()
+        if i:
+            VisitDialog(self, i, self.visit_service, self.venue_service).exec()
+            self.page_dashboard.refresh_data()
+
     def open_observations(self):
         """Opens the observation management dialog for the selected intern."""
         i = self.get_selected_intern()
@@ -696,6 +710,11 @@ class MainWindow(QMainWindow):
             qta.icon("fa5s.calendar-alt", color="#50E3C2"), "  Supervisões"
         )
         act_meet.triggered.connect(self.open_meetings)
+
+        act_visit = menu.addAction(
+            qta.icon("fa5s.map-marked-alt", color="#E91E63"), "  Visitas Técnicas"
+        )
+        act_visit.triggered.connect(self.open_visits)
 
         act_obs = menu.addAction(qta.icon("fa5s.eye", color="#9013FE"), "  Observações")
         act_obs.triggered.connect(self.open_observations)

@@ -16,7 +16,7 @@ REQUIRED_FIELDS = {
 }
 
 
-class VIsitService(BaseService[Visit]):
+class VisitService(BaseService[Visit]):
     REQUIRED_FIELDS = REQUIRED_FIELDS
 
     def __init__(self, repo: VisitRepository):
@@ -38,7 +38,33 @@ class VIsitService(BaseService[Visit]):
         return self.repo.update(visit)
 
     def delete_visit(self, visit: Visit):
-        return self.delete(visit, "visit")
+        """
+        Remove a visita do banco e, se tiver sucesso, apaga a foto associada do disco.
+        """
+        full_visit_data = self.repo.get_by_id(visit.visit_id)
+
+        if not full_visit_data:
+            return False
+
+        db_success = self.repo.delete(visit.visit_id)
+
+        if db_success and full_visit_data.photo_path:
+            self._delete_physical_photo(full_visit_data.photo_path)
+
+        return db_success
+
+    def _delete_physical_photo(self, filename: str):
+        try:
+            import os
+            from config import USER_DATA_ROOT
+
+            photo_path = USER_DATA_ROOT / "photos" / filename
+
+            if photo_path.exists():
+                os.remove(photo_path)
+
+        except Exception as e:
+            print(f"Aviso: Não foi possível deletar a imagem {filename}: {e}")
 
     def get_visits_by_intern(self, intern_id: int):
         return self.repo.get_by_intern_id(intern_id)

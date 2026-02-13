@@ -329,7 +329,7 @@ class DashboardView(QWidget):
             return
 
         frame.figure.clear()
-        ax = frame.figure.add_axes([0, 0, 0.6, 1])
+        ax = frame.figure.add_axes((0, 0, 0.6, 1))
 
         with_venue = total - no_venue
         if total == 0:

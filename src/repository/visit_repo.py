@@ -1,5 +1,5 @@
 from sqlite3 import Connection, Cursor
-from typing import List
+from typing import List, Optional
 
 from core.models.visit import Visit
 from data.database import DatabaseConnector
@@ -41,6 +41,12 @@ class VisitRepository:
         return visits
 
     get_by_intern = get_by_intern_id
+
+    def get_by_id(self, visit_id: int) -> Optional[Visit]:
+        sql = "SELECT * FROM visits WHERE visit_id = ?"
+        self.cursor.execute(sql, (visit_id,))
+        row = self.cursor.fetchone()
+        return Visit.from_db_row(row)
 
     def save(self, visit: Visit) -> int:
         if visit.visit_id is not None:
@@ -93,4 +99,14 @@ class VisitRepository:
 
         self.cursor.execute(sql_query, data)
         self.conn.commit()
+        return self.cursor.rowcount > 0
+
+    def delete(self, visit_id: int) -> bool:
+        if not visit_id:
+            return False
+
+        sql = "DELETE FROM visits WHERE visit_id = ?"
+        self.cursor.execute(sql, (visit_id,))
+        self.conn.commit()
+
         return self.cursor.rowcount > 0

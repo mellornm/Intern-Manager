@@ -16,6 +16,11 @@ __pycache__/
 
 # Database
 *.db
+*.sqlite
+*.sqlite3
+
+# User data & media
+**/photos/
 
 # Pytest
 *.pytest_cache

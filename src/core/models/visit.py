@@ -37,7 +37,7 @@ class Visit:
             intern_id=row["intern_id"],
             venue_id=row["venue_id"],
             visit_date=row["visit_date"],
-            observation=row.get("observation"),
-            photo_path=row.get("photo_path"),
+            observation=row["observation"],
+            photo_path=row["photo_path"],
             visit_id=row["visit_id"],
         )

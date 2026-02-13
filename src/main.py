@@ -19,26 +19,30 @@ from ui.main_window import MainWindow
 from data.database import DatabaseConnector
 
 # Repositories
-from repository.venue_repo import VenueRepository
-from repository.intern_repo import InternRepository
 from repository.document_repo import DocumentRepository
-from repository.observation_repo import ObservationRepository
 from repository.evaluation_criteria_repo import EvaluationCriteriaRepository
 from repository.grade_repo import GradeRepository
+from repository.intern_repo import InternRepository
 from repository.meeting_repo import MeetingRepository
+from repository.observation_repo import ObservationRepository
+from repository.venue_repo import VenueRepository
+from repository.visit_repo import VisitRepository
+
 
 # Services
-from services.venue_service import VenueService
-from services.intern_service import InternService
 from services.document_service import DocumentService
-from services.observation_service import ObservationService
 from services.evaluation_criteria_service import EvaluationCriteriaService
+from services.export_service import ExportService
 from services.grade_service import GradeService
 from services.import_service import ImportService
+from services.intern_service import InternService
 from services.meeting_service import MeetingService
+from services.observation_service import ObservationService
 from services.report_service import ReportService
-from services.export_service import ExportService
 from services.update_service import check_for_updates
+from services.venue_service import VenueService
+from services.visit_service import VisitService
+
 
 # Utils
 from utils.seeder import seed_default_criteria
@@ -71,8 +75,6 @@ def main():
 
     print("\n=== SYSTEM STARTUP ===\n")
 
-    # The database connector is the lowest-level dependency.
-    # It needs to be available for the repositories.
     print("INITIALIZING DATABASE CONNECTION")
     try:
         db = DatabaseConnector()
@@ -86,11 +88,6 @@ def main():
 
     print("INITIALIZING SERVICES")
     try:
-        # Dependency Injection: Create repository instances first,
-        # then inject them into the corresponding services.
-        # This decouples the business logic (services) from the data access layer (repositories).
-
-        # Repositories (Data Access Layer)
         repo_venue = VenueRepository(db)
         repo_intern = InternRepository(db)
         repo_doc = DocumentRepository(db)
@@ -98,21 +95,20 @@ def main():
         repo_criteria = EvaluationCriteriaRepository(db)
         repo_grade = GradeRepository(db)
         repo_meeting = MeetingRepository(db)
+        repo_visit = VisitRepository(db)
         report_service = ReportService()
 
-        # Services (Business Logic Layer)
         v_service = VenueService(repo_venue)
         i_service = InternService(repo_intern)
         d_service = DocumentService(repo_doc)
         obs_service = ObservationService(repo_obs)
         m_service = MeetingService(repo_meeting)
+        vis_service = VisitService(repo_visit)
         criteria_service = EvaluationCriteriaService(repo_criteria)
 
-        # Some services might need access to multiple repositories.
         grade_service = GradeService(repo=repo_grade, criteria_repo=repo_criteria)
         report_service = ReportService()
 
-        # The import service coordinates with other services to handle bulk data operations.
         imp_service = ImportService(
             intern_service=i_service,
             venue_service=v_service,
@@ -130,15 +126,12 @@ def main():
     except Exception as e:
         print(f"WARNING: Failed to seed default criteria. Details: {e}\n")
 
-    # On startup, check for a CSV file in the designated import folder.
-    # This allows for batch-importing data without user interaction.
     print("CHECKING FOR CSV IMPORT...")
     csv_path = get_csv_path()
 
     if csv_path:
         try:
             imp_service.read_file(csv_path)
-            # Make sure the changes from the import are saved.
             if db.conn:
                 db.conn.commit()
             else:
@@ -150,14 +143,11 @@ def main():
 
     print("LAUNCHING GUI...")
 
-    # A safety check. Ensures that every existing intern has their required
-    # documents created, in case they were missed or the system logic changed.
     all_interns = i_service.get_all_interns()
     for intern in all_interns:
         if intern.intern_id:
             d_service.create_initial_documents_batch(intern.intern_id)
 
-    # Inject all necessary services into the main UI window.
     window = MainWindow(
         intern_service=i_service,
         criteria_service=criteria_service,
@@ -166,6 +156,7 @@ def main():
         venue_service=v_service,
         document_service=d_service,
         meeting_service=m_service,
+        visit_service=vis_service,
         report_service=report_service,
         import_service=imp_service,
         export_service=export_service,

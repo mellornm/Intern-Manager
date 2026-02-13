@@ -17,16 +17,24 @@ from ui.styles import COLORS
 
 class SettingsDialog(QDialog):
     """
-    Janela para configurar dados globais do sistema e exportar dados.
+    Dialog for managing application settings, including report personalization and data export.
+
+    This dialog allows users to configure details like institution name, supervisor,
+    city/state, and a logo path for reports. It also provides functionality to
+    export the application's database to an Excel file.
+
+    Attributes:
+        export_service (ExportService, optional): An service for exporting data.
+            If None, the export functionality will be disabled.
+        settings (QSettings): QSettings object for persistent storage of user settings.
     """
 
-    # ADICIONADO: export_service no __init__
     def __init__(self, parent=None, export_service=None):
         super().__init__(parent)
-        self.export_service = export_service  # Guarda a referência
+        self.export_service = export_service
 
         self.setWindowTitle("Configurações do Sistema")
-        self.resize(550, 500)  # Aumentei um pouco a altura
+        self.resize(550, 500)
 
         # Estilo
         self.setStyleSheet(f"""
@@ -51,7 +59,6 @@ class SettingsDialog(QDialog):
             QLineEdit:focus {{ border: 1px solid {COLORS["primary"]}; }}
         """)
 
-        # Persistência via QSettings
         self.settings = QSettings("MyOrganization", "InternManager2026")
 
         self._setup_ui()
@@ -77,7 +84,6 @@ class SettingsDialog(QDialog):
         header.addStretch()
         layout.addLayout(header)
 
-        # --- Grupo 1: Relatórios ---
         group_rep = QGroupBox("Personalização dos Relatórios (PDF)")
         form = QFormLayout()
         form.setSpacing(15)
@@ -116,7 +122,6 @@ class SettingsDialog(QDialog):
         group_rep.setLayout(form)
         layout.addWidget(group_rep)
 
-        # --- Grupo 2: Dados e Backup (NOVO) ---
         group_data = QGroupBox("Dados e Backup")
         data_layout = QVBoxLayout()
 
@@ -148,7 +153,6 @@ class SettingsDialog(QDialog):
 
         layout.addStretch()
 
-        # Botões Rodapé
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 

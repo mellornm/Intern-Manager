@@ -29,9 +29,13 @@ class SettingsDialog(QDialog):
         settings (QSettings): QSettings object for persistent storage of user settings.
     """
 
-    def __init__(self, parent=None, export_service=None):
+    def __init__(
+        self, parent=None, export_service=None, visit_service=None, intern_service=None
+    ):
         super().__init__(parent)
         self.export_service = export_service
+        self.visit_service = visit_service
+        self.intern_service = intern_service
 
         self.setWindowTitle("Configurações do Sistema")
         self.resize(550, 500)
@@ -148,6 +152,19 @@ class SettingsDialog(QDialog):
             self.btn_export.setText("Exportar (Serviço indisponível)")
 
         data_layout.addWidget(self.btn_export)
+        self.btn_export_photos = QPushButton(" Backup de TODAS as Fotos")
+        self.btn_export_photos.setIcon(qta.icon("fa5s.images", color="white"))
+        self.btn_export_photos.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_export_photos.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS["primary"]}; color: white; border: none; 
+                padding: 10px; border-radius: 6px; font-weight: bold; text-align: left; padding-left: 15px;
+            }}
+            QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
+        """)
+        self.btn_export_photos.clicked.connect(self.backup_all_photos)
+
+        data_layout.addWidget(self.btn_export_photos)
         group_data.setLayout(data_layout)
         layout.addWidget(group_data)
 
@@ -219,3 +236,30 @@ class SettingsDialog(QDialog):
                 )
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Falha na exportação:\n{e}")
+
+    def backup_all_photos(self):
+        if not self.visit_service or not self.intern_service:
+            QMessageBox.critical(self, "Erro", "Serviços não disponíveis.")
+            return
+
+        folder = QFileDialog.getExistingDirectory(self, "Pasta para Backup das Fotos")
+        if not folder:
+            return
+
+        all_interns = self.intern_service.get_all_interns()
+
+        targets = [(i.intern_id, i.name) for i in all_interns if i.intern_id]
+
+        if not targets:
+            QMessageBox.information(self, "Aviso", "Nenhum aluno encontrado.")
+            return
+
+        try:
+            success, errors = self.visit_service.export_batch_photos(targets, folder)
+            QMessageBox.information(
+                self,
+                "Backup Concluído",
+                f"Fotos exportadas: {success}\nErros/Ignorados: {errors}",
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", str(e))

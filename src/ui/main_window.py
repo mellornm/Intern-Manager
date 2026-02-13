@@ -350,6 +350,7 @@ class MainWindow(QMainWindow):
         )
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
         # Right-click menu
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -575,7 +576,12 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         """Opens the application settings dialog."""
-        SettingsDialog(self, export_service=self.export_service).exec()
+        SettingsDialog(
+            self,
+            export_service=self.export_service,
+            visit_service=self.visit_service,
+            intern_service=self.service,
+        ).exec()
 
     def import_csv_dialog(self):
         """
@@ -647,91 +653,134 @@ class MainWindow(QMainWindow):
                 self.page_criteria.refresh_data()
 
     def _open_context_menu(self, pos):
-        """
-        Creates and displays a context menu for the intern table.
+        # 1. Pega os itens selecionados
+        selection = self.table.selectionModel().selectedRows()
+        if not selection:
+            return
 
-        The menu is triggered by a right-click and provides shortcuts
-        to common actions for the selected intern.
-        """
-        # 1. Check if the click was on a valid row item.
-        item = self.table.itemAt(pos)
-        if not item:
-            return  # Clicked on empty space, do nothing
-
-        # Ensure the clicked row is selected before showing the menu
-        self.table.selectRow(item.row())
-
-        # 2. Create the menu instance
         menu = QMenu(self)
-        # Apply custom styling to match the application's theme
+        # Estilo do menu
         menu.setStyleSheet(f"""
-                QMenu {{ 
-                    background-color: {COLORS["white"]}; 
-                    border: 1px solid {COLORS["border"]}; 
-                    border-radius: 6px;
-                    padding: 5px;
-                }}
-                QMenu::item {{ 
-                    padding: 8px 25px; 
-                    border-radius: 4px;
-                    color: {COLORS["dark"]};
-                    font-weight: 500;
-                }}
-                QMenu::item:selected {{ 
-                    background-color: {COLORS["light"]}; 
-                    color: {COLORS["primary"]}; 
-                }}
-                QMenu::separator {{
-                    height: 1px;
-                    background: {COLORS["border"]};
-                    margin: 5px 10px;
-                }}
-            """)
+            QMenu {{ background-color: {COLORS["white"]}; border: 1px solid {COLORS["border"]}; border-radius: 6px; padding: 5px; }}
+            QMenu::item {{ padding: 8px 25px; border-radius: 4px; color: {COLORS["dark"]}; font-weight: 500; }}
+            QMenu::item:selected {{ background-color: {COLORS["light"]}; color: {COLORS["primary"]}; }}
+            QMenu::separator {{ height: 1px; background: {COLORS["border"]}; margin: 5px 10px; }}
+        """)
 
-        # 3. Add actions to the menu, reusing existing methods and icons
-        act_edit = menu.addAction(
-            qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Cadastro"
+        count = len(selection)
+
+        # --- CENÁRIO 1: MÚLTIPLOS ALUNOS ---
+        if count > 1:
+            lbl_info = menu.addAction(f"  {count} Alunos Selecionados")
+            lbl_info.setEnabled(False)
+            menu.addSeparator()
+
+            # Ação em Lote: Exportar Fotos
+            act_export_photos = menu.addAction(
+                qta.icon("fa5s.images", color=COLORS["primary"]),
+                f"  Exportar Fotos ({count})",
+            )
+            act_export_photos.triggered.connect(
+                lambda: self.export_batch_photos_action(selection)
+            )
+
+        # --- CENÁRIO 2: UM ALUNO SÓ (Comportamento Original) ---
+        else:
+            # Garante que a linha clicada é a selecionada visualmente
+            item = self.table.itemAt(pos)
+            if item:
+                self.table.selectRow(item.row())
+
+            act_edit = menu.addAction(
+                qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Cadastro"
+            )
+            act_edit.triggered.connect(self.open_edit_dialog)
+
+            menu.addSeparator()
+
+            act_grades = menu.addAction(
+                qta.icon("fa5s.star", color="#F5A623"), "  Lançar Notas"
+            )
+            act_grades.triggered.connect(self.open_grades_dialog)
+
+            act_docs = menu.addAction(
+                qta.icon("fa5s.folder-open", color="#4A90E2"), "  Documentos"
+            )
+            act_docs.triggered.connect(self.open_documents)
+
+            act_meet = menu.addAction(
+                qta.icon("fa5s.calendar-alt", color="#50E3C2"), "  Supervisões"
+            )
+            act_meet.triggered.connect(self.open_meetings)
+
+            act_visit = menu.addAction(
+                qta.icon("fa5s.map-marked-alt", color="#E91E63"), "  Visitas Técnicas"
+            )
+            act_visit.triggered.connect(self.open_visits)
+
+            act_obs = menu.addAction(
+                qta.icon("fa5s.eye", color="#9013FE"), "  Observações"
+            )
+            act_obs.triggered.connect(self.open_observations)
+
+            menu.addSeparator()
+
+            # Opção Extra: Exportar fotos deste aluno específico
+            act_exp_photo = menu.addAction(
+                qta.icon("fa5s.images", color=COLORS["medium"]), "  Exportar Fotos"
+            )
+            act_exp_photo.triggered.connect(
+                lambda: self.export_batch_photos_action(selection)
+            )
+
+            act_pdf = menu.addAction(
+                qta.icon("fa5s.file-pdf", color="#D0021B"), "  Gerar Relatório Final"
+            )
+            act_pdf.triggered.connect(self.open_report)
+
+            menu.addSeparator()
+
+            act_del = menu.addAction(
+                qta.icon("fa5s.trash-alt", color="#D0021B"), "  Excluir Aluno"
+            )
+            act_del.triggered.connect(self.delete_intern)
+
+        menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def export_batch_photos_action(self, selected_rows):
+        """
+        Lógica chamada pelo menu de contexto para exportar fotos.
+        """
+        # 1. Recupera IDs e Nomes dos alunos selecionados
+        targets = []
+        for index in selected_rows:
+            row = index.row()
+
+            item_id = self.table.item(row, 0)
+            item_name = self.table.item(row, 1)
+
+            if item_id and item_name:
+                targets.append((int(item_id.text()), item_name.text()))
+
+        if not targets:
+            return
+
+        # 2. Pergunta onde salvar
+        folder = QFileDialog.getExistingDirectory(
+            self, "Selecione a Pasta para Salvar as Fotos"
         )
-        act_edit.triggered.connect(self.open_edit_dialog)
+        if not folder:
+            return
 
-        menu.addSeparator()
+        # 3. Chama o VisitService
+        try:
+            success, errors = self.visit_service.export_batch_photos(targets, folder)
 
-        act_grades = menu.addAction(
-            qta.icon("fa5s.star", color="#F5A623"), "  Lançar Notas"
-        )
-        act_grades.triggered.connect(self.open_grades_dialog)
+            msg = f"Processo finalizado!\n\nFotos copiadas: {success}"
+            if errors > 0:
+                msg += f"\nErros/Ignorados (sem foto ou falha): {errors}"
 
-        act_docs = menu.addAction(
-            qta.icon("fa5s.folder-open", color="#4A90E2"), "  Documentos"
-        )
-        act_docs.triggered.connect(self.open_documents)
+            QMessageBox.information(self, "Exportação de Fotos", msg)
 
-        act_meet = menu.addAction(
-            qta.icon("fa5s.calendar-alt", color="#50E3C2"), "  Supervisões"
-        )
-        act_meet.triggered.connect(self.open_meetings)
-
-        act_visit = menu.addAction(
-            qta.icon("fa5s.map-marked-alt", color="#E91E63"), "  Visitas Técnicas"
-        )
-        act_visit.triggered.connect(self.open_visits)
-
-        act_obs = menu.addAction(qta.icon("fa5s.eye", color="#9013FE"), "  Observações")
-        act_obs.triggered.connect(self.open_observations)
-
-        menu.addSeparator()
-
-        act_pdf = menu.addAction(
-            qta.icon("fa5s.file-pdf", color="#D0021B"), "  Gerar Relatório Final"
-        )
-        act_pdf.triggered.connect(self.open_report)
-
-        menu.addSeparator()
-
-        act_del = menu.addAction(
-            qta.icon("fa5s.trash-alt", color="#D0021B"), "  Excluir Aluno"
-        )
-        act_del.triggered.connect(self.delete_intern)
-
-        # 4. Display the menu at the global cursor position
-        menu.exec(self.table.mapToGlobal(pos))
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Falha na exportação: {e}")

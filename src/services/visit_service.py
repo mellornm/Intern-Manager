@@ -2,6 +2,7 @@ import shutil
 import uuid
 from pathlib import Path
 
+
 from repository.visit_repo import VisitRepository
 
 from config import USER_DATA_ROOT
@@ -91,3 +92,45 @@ class VisitService(BaseService[Visit]):
         shutil.copy(original_path, destination)
 
         return filename
+
+    def export_batch_photos(
+        self, intern_data: list[tuple[int, str]], target_folder: str
+    ) -> tuple[int, int]:
+        photos_root = USER_DATA_ROOT / "photos"
+        count_success = 0
+        count_errors = 0
+
+        for int_id, int_name in intern_data:
+            visits = self.repo.get_by_intern_id(int_id)
+
+            visits_with_photos = [v for v in visits if v.photo_path]
+
+            if not visits_with_photos:
+                continue
+
+            safe_name = sanitize_filename(int_name)
+            student_dir = Path(target_folder) / safe_name
+
+            try:
+                student_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                count_errors += 1
+                continue
+
+            for v in visits_with_photos:
+                source_file = photos_root / v.photo_path
+
+                if source_file.exists():
+                    ext = source_file.suffix
+                    new_name = f"{v.visit_date}_Visita_{v.visit_id}{ext}"
+                    dest_file = student_dir / new_name
+
+                    try:
+                        shutil.copy2(source_file, dest_file)
+                        count_success += 1
+                    except Exception:
+                        count_errors += 1
+                else:
+                    count_errors += 1
+
+        return count_success, count_errors

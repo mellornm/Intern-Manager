@@ -1,22 +1,23 @@
-from typing import Optional
 from datetime import datetime
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QGraphicsDropShadowEffect,
-    QComboBox,
-)
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor
+from typing import Optional
+
 import qtawesome as qta
 
 # Matplotlib
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ui.styles import COLORS
 
@@ -339,7 +340,7 @@ class DashboardView(QWidget):
             sizes = [with_venue, no_venue]
             colors = [COLORS["success"], COLORS["danger"]]
 
-            wedges, texts, autotexts = ax.pie(
+            pie_result = ax.pie(
                 sizes,
                 autopct="%1.0f%%",
                 startangle=90,
@@ -348,6 +349,7 @@ class DashboardView(QWidget):
                 textprops={"color": "#FFFFFF", "fontsize": 10, "weight": "bold"},
                 wedgeprops={"width": 0.4, "edgecolor": "white"},
             )
+            wedges = pie_result[0]
 
             frame.figure.legend(
                 wedges,

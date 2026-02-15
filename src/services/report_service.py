@@ -29,7 +29,6 @@ from core.models.visit import Visit
 class ReportService:
     """
     PDF Report Generation Service using ReportLab.
-    Goodbye 90s HTML, hello vector rendering.
     """
 
     def generate_pdf(

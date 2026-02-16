@@ -40,7 +40,6 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Configurações do Sistema")
         self.resize(550, 500)
 
-        # Estilo
         self.setStyleSheet(f"""
             QDialog {{ background-color: {COLORS["light"]}; }}
             QGroupBox {{ 
@@ -63,7 +62,7 @@ class SettingsDialog(QDialog):
             QLineEdit:focus {{ border: 1px solid {COLORS["primary"]}; }}
         """)
 
-        self.settings = QSettings("MyOrganization", "InternManager2026")
+        self.settings = QSettings("Rodrigo Noronha de Mello", "InternManager2026")
 
         self._setup_ui()
         self._load_data()

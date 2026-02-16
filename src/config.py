@@ -50,7 +50,6 @@ def get_app_paths() -> tuple[Path, Path]:
     """
     # 1. Determine the read-only path for code/resources.
     if getattr(sys, "frozen", False):
-        # Running as a bundled executable (e.g., PyInstaller).
         if hasattr(sys, "_MEIPASS"):
             # Standard PyInstaller one-file bundle.
             app_root = Path(sys._MEIPASS)  # type:ignore
@@ -59,32 +58,24 @@ def get_app_paths() -> tuple[Path, Path]:
             app_root = Path(sys.executable).parent
     else:
         # Running in a normal development environment.
-        # Resolves to the 'src' directory.
         app_root = Path(__file__).resolve().parent.parent
 
     # 2. Determine the writable path for the user database.
     if getattr(sys, "frozen", False):
-        # For a packaged app, store data in a standard user location.
         base_path = os.getenv("APPDATA") or os.path.expanduser("~")
         user_data_root = Path(base_path) / "InternManager"
     else:
-        # For development, use a local 'data' directory for convenience.
         user_data_root = app_root / "data"
 
     return app_root, user_data_root
 
 
 # --- Global Configuration ---
-# Unpack the paths for global use across the application.
 APP_ROOT, USER_DATA_ROOT = get_app_paths()
 
-# Path to static resources (SQL scripts, images, etc.).
-# These are bundled with the app and are read-only.
 RESOURCES_DIR = APP_ROOT / "resources"
 SQL_PATH = RESOURCES_DIR / "create_db.sql"
 
-# Path to dynamic user data (the database).
-# This location is writable and persistent.
 DB_DIR = USER_DATA_ROOT
 DB_PATH = DB_DIR / "interns.db"
 

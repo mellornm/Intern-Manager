@@ -6,6 +6,13 @@ from config import VERSION, REPO_URL
 
 
 def check_for_updates(parent_window):
+    """
+    Checks for updates by fetching the latest release information from the repository URL.
+    If a newer version is available, it prompts the user to visit the download page.
+    Args:
+        parent_window (QWidget): The parent window used to display the message box.
+    """
+
     try:
         response = requests.get(REPO_URL, timeout=3)
 

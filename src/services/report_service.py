@@ -27,9 +27,7 @@ from core.models.visit import Visit
 
 
 class ReportService:
-    """
-    PDF Report Generation Service using ReportLab.
-    """
+    """Service responsible for generating PDF reports."""
 
     def generate_pdf(
         self,
@@ -43,15 +41,32 @@ class ReportService:
         observations: list[Observation],
         visits: list[Visit] | None = None,
     ):
+        """Generate a PDF report for an intern's evaluation.
+
+        Args:
+            filepath: The path where the PDF file will be saved.
+            intern: The intern being evaluated.
+            venue: The venue where the intern is working (optional).
+            criteria_list: A list of evaluation criteria.
+            grades: A list of grades given to the intern.
+            documents: A list of documents related to the intern's work.
+            meetings: A list of meetings the intern has had with their supervisor.
+            observations: A list of observations made during the intern's work.
+            visits: A list of visits the intern has made (optional).
+        """
         if visits is None:
             visits = []
 
-        # --- 1. Load Settings (Keeping UI compatibility) ---
+        # --- 1. Load Settings ---
+        # Explicitly casting to str to satisfy strict type checkers (Pylance)
+        # QSettings.value returns Any/object by default.
         settings = QSettings("MyOrganization", "InternManager2026")
-        inst_name = settings.value("institution_name", "Instituição de Ensino")
-        supervisor_name = settings.value("coordinator_name", "Coordenador não definido")
-        city_state = settings.value("city_state", "Cidade - UF")
-        logo_path = settings.value("logo_path", "")
+        inst_name = str(settings.value("institution_name", "Instituição de Ensino"))
+        supervisor_name = str(
+            settings.value("coordinator_name", "Coordenador não definido")
+        )
+        city_state = str(settings.value("city_state", "Cidade - UF"))
+        logo_path = str(settings.value("logo_path", ""))
 
         # Standard Colors
         PRIMARY_COLOR = colors.HexColor("#283593")
@@ -119,13 +134,12 @@ class ReportService:
             )
         )
 
-        Story = []  # List of elements that make up the PDF (Platypus flow)
+        Story: list = []
 
         # --- 3. Header (Logo and Title) ---
         logo_img = ""
         if logo_path and os.path.exists(logo_path):
             try:
-                # Maintain aspect ratio by limiting height
                 logo_img = Image(logo_path, height=20 * mm, kind="proportional")
             except Exception:
                 logo_img = ""
@@ -225,7 +239,7 @@ class ReportService:
         # --- 5. Grades Board ---
         Story.append(Paragraph("Quadro de Avaliação e Notas", styles["SectionTitle"]))
 
-        grades_data = [["Critério de Avaliação", "Peso Máx.", "Nota Obtida"]]
+        grades_data: list = [["Critério de Avaliação", "Peso Máx.", "Nota Obtida"]]
         for c in criteria_list:
             if c.criteria_id is None:
                 continue
@@ -269,7 +283,7 @@ class ReportService:
 
         # --- 6. Technical Visits ---
         Story.append(Paragraph("Auditoria e Visitas Técnicas", styles["SectionTitle"]))
-        visits_data = [["Data", "Observações do Relatório de Campo"]]
+        visits_data: list = [["Data", "Observações do Relatório de Campo"]]
 
         if not visits:
             visits_data.append(
@@ -277,7 +291,6 @@ class ReportService:
             )
         else:
             for v in visits:
-                # Replaced duck typing with proper attribute access
                 date_str = str(v.visit_date) if v.visit_date else "S/D"
                 obs_str = v.observation if v.observation else "Sem observações."
                 visits_data.append([date_str, Paragraph(obs_str, styles["NormalText"])])
@@ -300,7 +313,7 @@ class ReportService:
 
         # --- 7. Documentation ---
         Story.append(Paragraph("Auditoria Documental", styles["SectionTitle"]))
-        docs_data = [["Documento Obrigatório", "Situação Atual"]]
+        docs_data: list = [["Documento Obrigatório", "Situação Atual"]]
         pending_docs = 0
 
         if not documents:
@@ -347,7 +360,7 @@ class ReportService:
             )
         )
 
-        # --- 8. General Observations (Newly added section) ---
+        # --- 8. General Observations ---
         Story.append(Paragraph("Observações Gerais", styles["SectionTitle"]))
 
         if not observations:
@@ -355,9 +368,8 @@ class ReportService:
                 Paragraph("Nenhuma observação geral registrada.", styles["NormalText"])
             )
         else:
-            obs_data = []
+            obs_data: list = []
             for obs in observations:
-                # Using getattr as a safety net in case the Observation schema differs
                 date_str = getattr(obs, "date", getattr(obs, "created_at", "S/D"))
                 text_str = getattr(
                     obs,
@@ -382,7 +394,7 @@ class ReportService:
             )
             Story.append(t_obs)
 
-        # --- 9. Signatures (Using KeepTogether to prevent page breaks) ---
+        # --- 9. Signatures  ---
         date_emission = datetime.now().strftime("%d/%m/%Y às %H:%M")
         local_data_sig = (
             f"{city_state}, {datetime.now().strftime('%d de %B de %Y')}"
@@ -432,7 +444,6 @@ class ReportService:
             )
         )
 
-        # KeepTogether forces the signature block to stay on the same page
         Story.append(KeepTogether(sig_elements))
 
         # --- Final Render ---

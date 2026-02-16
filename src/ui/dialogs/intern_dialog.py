@@ -23,8 +23,6 @@ from ui.styles import COLORS
 
 
 class InternDialog(QDialog):
-    """Dialog para criar/editar Estagiário com estilo moderno."""
-
     def __init__(
         self, parent, venue_service: VenueService, intern: Optional[Intern] = None
     ):
@@ -35,7 +33,6 @@ class InternDialog(QDialog):
         self.setWindowTitle("Ficha do Estagiário")
         self.setMinimumWidth(550)
 
-        # CSS ESPECIALIZADO
         self.setStyleSheet(f"""
             QDialog {{ background-color: {COLORS["light"]}; }}
             QLabel {{ color: {COLORS["dark"]}; font-size: 13px; }}
@@ -141,7 +138,7 @@ class InternDialog(QDialog):
         form_layout.setContentsMargins(20, 20, 20, 20)
         form_layout.setSpacing(15)
 
-        # Campos Pessoais
+        # Personal
         self.txt_name = QLineEdit()
         self.txt_ra = QLineEdit()
         self.txt_email = QLineEdit()
@@ -163,19 +160,17 @@ class InternDialog(QDialog):
         venue_layout.addWidget(self.combo_venue)
         venue_layout.addWidget(self.btn_add_venue)
 
-        # --- DATAS COM LARGURA EXTRA ---
-        # Aumentado para 160px para garantir que caiba em qualquer monitor/escala
         self.date_start = QDateEdit()
         self.date_start.setCalendarPopup(True)
         self.date_start.setDisplayFormat("dd/MM/yyyy")
         self.date_start.setDate(QDate.currentDate())
-        self.date_start.setFixedWidth(160)  # AUMENTADO
+        self.date_start.setFixedWidth(160)
 
         self.date_end = QDateEdit()
         self.date_end.setCalendarPopup(True)
         self.date_end.setDisplayFormat("dd/MM/yyyy")
         self.date_end.setDate(QDate.currentDate().addMonths(6))
-        self.date_end.setFixedWidth(160)  # AUMENTADO
+        self.date_end.setFixedWidth(160)
 
         # Semestre
         self.combo_term = QComboBox()

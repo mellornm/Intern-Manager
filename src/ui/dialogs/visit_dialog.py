@@ -90,6 +90,24 @@ class VisitDialog(QDialog):
                 border-bottom: 2px solid {COLORS["light"]};
                 font-weight: bold;
             }}
+
+            QCalendarWidget QWidget {{
+                background-color: {COLORS["white"]};
+                color: {COLORS["dark"]};
+                alternate-background-color: #FAFAFA;
+            }}
+            QCalendarWidget QToolButton {{
+                color: {COLORS["dark"]};
+                background-color: transparent;
+                icon-size: 24px;
+            }}
+            QCalendarWidget QToolButton::menu-indicator {{ image: none; }}
+            QCalendarWidget QSpinBox {{
+                background-color: {COLORS["white"]};
+                color: {COLORS["dark"]};
+                selection-background-color: {COLORS["primary"]};
+                selection-color: white;
+            }}
             
             QLineEdit, QComboBox, QDateEdit {{
                 background-color: {COLORS["white"]};

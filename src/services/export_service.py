@@ -8,9 +8,6 @@ class ExportService:
         self.db = db_connector
 
     def export_to_excel(self, filepath: str):
-        """
-        Exporta todas as tabelas principais para um arquivo Excel (.xlsx).
-        """
         tables = [
             "interns",
             "venues",

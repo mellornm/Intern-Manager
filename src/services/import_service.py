@@ -1,13 +1,24 @@
-import openpyxl
 from pathlib import Path
+
+import openpyxl
+
+from core.models.intern import Intern
+from core.models.venue import Venue
+from services.document_service import DocumentService
 from services.intern_service import InternService
 from services.venue_service import VenueService
-from services.document_service import DocumentService
-from core.models.venue import Venue
-from core.models.intern import Intern
 
 
 class ImportService:
+    """
+    Initializes the ImportService with necessary dependencies.
+
+    Args:
+        intern_service (InternService): Service for handling interns.
+        venue_service (VenueService): Service for handling venues.
+        document_service (DocumentService): Service for handling documents.
+    """
+
     def __init__(
         self,
         intern_service: InternService,
@@ -20,6 +31,17 @@ class ImportService:
         self._venue_id_map = {}
 
     def read_file(self, filename: str | Path) -> None:
+        """
+        Reads an Excel file and processes the contents based on sheet names.
+
+        Args:
+            filename (str | Path): The path to the Excel file to be read.
+
+        Raises:
+            ValueError: If the file is not an Excel file.
+            Exception: If an error occurs during file processing.
+        """
+
         path = Path(filename)
         if path.suffix.lower() not in [".xlsx", ".xls"]:
             raise ValueError(
@@ -41,6 +63,14 @@ class ImportService:
             raise e
 
     def _sheet_to_dict_list(self, sheet) -> list[dict]:
+        """
+        Converts an Excel sheet into a list of dictionaries.
+
+        Args:
+            sheet (openpyxl.worksheet.worksheet.Worksheet): The Excel sheet to be converted.
+        Returns:
+            list[dict]: A list of dictionaries representing the rows in the sheet.
+        """
         rows = list(sheet.iter_rows(values_only=True))
         if not rows:
             return []
@@ -57,6 +87,15 @@ class ImportService:
         return data
 
     def _process_venues_sheet(self, sheet):
+        """
+        Processes the venues data from an Excel sheet.
+
+        Args:
+            sheet (openpyxl.worksheet.worksheet.Worksheet): The Excel sheet containing venue data.
+
+        Returns:
+            None
+        """
         venues_data = self._sheet_to_dict_list(sheet)
 
         for row in venues_data:
@@ -91,6 +130,15 @@ class ImportService:
                 self._venue_id_map[excel_id] = real_id
 
     def _process_interns_sheet(self, sheet):
+        """
+        Processes the venues data from an Excel sheet.
+
+        Args:
+            sheet (openpyxl.worksheet.worksheet.Worksheet): The Excel sheet containing venue data.
+
+        Returns:
+            None
+        """
         interns_data = self._sheet_to_dict_list(sheet)
 
         for row in interns_data:

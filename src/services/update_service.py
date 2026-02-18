@@ -19,7 +19,7 @@ def check_for_updates(parent_window):
         if response.status_code == 200:
             data = response.json()
             latest_tag = data["tag_name"]
-            clean_latest = latest_tag.lstrip("v")
+            clean_latest = latest_tag.lstrip("v").lstrip(".")
 
             if version.parse(clean_latest) > version.parse(VERSION):
                 reply = QMessageBox.question(

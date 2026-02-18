@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
         app_title.setStyleSheet(
             "font-size: 20px; font-weight: 900; padding: 30px 20px 5px 20px; letter-spacing: 1px;"
         )
-        app_subtitle = QLabel("versão 1.2.1")
+        app_subtitle = QLabel("versão 1.2.2")
         app_subtitle.setStyleSheet(
             f"font-size: 12px; font-weight: normal; color: {COLORS['secondary']}; padding: 0 20px 30px 20px;"
         )

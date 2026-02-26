@@ -1,6 +1,8 @@
-from services.base_service import BaseService
+from typing import Any
+
 from core.models.meeting import Meeting
 from repository.meeting_repo import MeetingRepository
+from services.base_service import BaseService
 from utils.validations import parse_date_to_iso
 
 REQUIRED_FIELDS = {
@@ -69,7 +71,7 @@ class MeetingService(BaseService[Meeting]):
         """
         return self.repo.get_by_intern_id(intern_id)
 
-    def delete_meeting(self, meeting_id: int):
+    def delete_meeting(self, data_or_id: Any):
         """
         Removes a meeting from the system using the base service logic.
 
@@ -79,4 +81,4 @@ class MeetingService(BaseService[Meeting]):
         Returns:
             bool: True if the deletion was successful, False otherwise.
         """
-        return self.repo.delete(meeting_id)
+        return super().delete(data_or_id, "meeting")

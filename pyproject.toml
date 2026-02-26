@@ -1,6 +1,6 @@
 [project]
 name = "intern_manager"
-version = "1.2.2"
+version = "1.2.3"
 description = "A comprehensive desktop application for managing academic internships, evaluations, documents, and venue allocations."
 readme = "README.md"
 requires-python = ">=3.13"

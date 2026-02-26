@@ -280,23 +280,14 @@ class MeetingDialog(QDialog):
         if confirm == QMessageBox.StandardButton.No:
             return
 
-        # Pegando o ID da coluna 0
         item_id = self.table.item(row, 0)
         if not item_id:
             return
 
         meeting_id = int(item_id.text())
 
-        # CORREÇÃO: Adicionado 'is_intern_present=False' para satisfazer o modelo
-        dummy = Meeting(
-            intern_id=self.intern.intern_id,
-            meeting_date="",
-            is_intern_present=False,  # <--- O Pylance estava reclamando da falta disso
-            meeting_id=meeting_id,
-        )
-
         try:
-            self.service.repo.delete(dummy)
+            self.service.delete_meeting(meeting_id)
             self.load_data()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao excluir: {e}")

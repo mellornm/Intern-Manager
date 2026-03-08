@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from core.models.intern import Intern
@@ -11,102 +11,126 @@ class InternRepository:
     Repository responsible for persistence and retrieval of Intern entities.
 
     This class encapsulates database operations for interns, mapping directly
-    to the `interns` table using SQLAlchemy 2.0.
+    to the `interns` table using SQLAlchemy 2.0 with proper session lifecycle.
     """
 
     def __init__(self, session: Optional[Session] = None):
         """
-        Initializes the repository with a SQLAlchemy session.
+        Initializes the repository with an optional SQLAlchemy session.
 
         Args:
-            session (Optional[Session]): An active SQLAlchemy session. 
-                If None, it uses the global db_manager.
+            session (Optional[Session]): An active SQLAlchemy session.
         """
         self._session = session
-
-    @property
-    def session(self) -> Session:
-        """Returns the active session or gets a new one from the manager."""
-        return self._session or db_manager.get_session()
 
     def get_all(self) -> List[Intern]:
         """
         Retrieves all interns from the database, ordered by name.
-
-        Returns:
-            List[Intern]: A list of Intern model instances.
         """
-        stmt = select(Intern).order_by(Intern.name.asc())
-        return list(self.session.scalars(stmt).all())
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Intern).order_by(Intern.name.asc())
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_id(self, intern_id: int) -> Optional[Intern]:
         """
         Retrieves an intern by their unique ID.
-
-        Args:
-            intern_id (int): The primary key ID.
-
-        Returns:
-            Optional[Intern]: The Intern instance if found, otherwise None.
         """
-        return self.session.get(Intern, intern_id)
+        session = self._session or db_manager.get_session()
+        try:
+            return session.get(Intern, intern_id)
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_registration_number(self, ra: str) -> Optional[Intern]:
         """
         Retrieves an intern by their unique registration number (RA).
-
-        Args:
-            ra (str): The registration number to search for.
-
-        Returns:
-            Optional[Intern]: The Intern instance if found, otherwise None.
         """
-        stmt = select(Intern).where(Intern.registration_number == ra)
-        return self.session.scalars(stmt).first()
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Intern).where(Intern.registration_number == ra)
+            return session.scalars(stmt).first()
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
+
+    def get_by_name(self, name: str) -> Optional[Intern]:
+        """
+        Retrieves an intern by their name.
+        """
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Intern).where(Intern.name == name)
+            return session.scalars(stmt).first()
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def save(self, intern: Intern) -> int:
         """
-        Persists a new Intern entity to the database.
-
-        Args:
-            intern (Intern): The intern model instance to save.
-
-        Returns:
-            int: The generated ID for the new intern.
+        Persists a new Intern entity using a transactional scope.
         """
-        self.session.add(intern)
-        self.session.commit()
-        return intern.intern_id
+        if self._session:
+            self._session.add(intern)
+            self._session.flush()
+            return intern.intern_id
+        
+        with db_manager.session_scope() as session:
+            session.add(intern)
+            session.flush()
+            # ID is available after flush even before commit
+            return intern.intern_id
 
     def update(self, intern: Intern) -> bool:
         """
-        Updates an existing Intern record in the database.
-
-        Args:
-            intern (Intern): The intern instance with updated data.
-
-        Returns:
-            bool: True if the update was successful.
+        Updates an existing Intern record.
         """
-        # In SQLAlchemy, merge or simply committing an attached object handles updates.
-        # We use merge to ensure it's attached to the current session.
-        self.session.merge(intern)
-        self.session.commit()
-        return True
+        if self._session:
+            self._session.merge(intern)
+            return True
+
+        with db_manager.session_scope() as session:
+            session.merge(intern)
+            return True
 
     def delete(self, intern_id: int) -> bool:
         """
         Deletes an intern record by their ID.
-
-        Args:
-            intern_id (int): The ID of the intern to remove.
-
-        Returns:
-            bool: True if the deletion was successful.
         """
-        intern = self.get_by_id(intern_id)
-        if intern:
-            self.session.delete(intern)
-            self.session.commit()
-            return True
-        return False
+        if self._session:
+            intern = self._session.get(Intern, intern_id)
+            if intern:
+                self._session.delete(intern)
+                return True
+            return False
+
+        with db_manager.session_scope() as session:
+            intern = session.get(Intern, intern_id)
+            if intern:
+                session.delete(intern)
+                return True
+            return False
+
+    def count_total(self) -> int:
+        """Counts total number of interns."""
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(func.count(Intern.intern_id))
+            return session.scalar(stmt) or 0
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
+
+    def count_without_venue(self) -> int:
+        """Counts interns that are not allocated to any venue."""
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(func.count(Intern.intern_id)).where(Intern.venue_id == None)
+            return session.scalar(stmt) or 0
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()

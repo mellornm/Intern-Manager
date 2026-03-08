@@ -1,8 +1,10 @@
 from typing import Optional, List, TYPE_CHECKING
+from datetime import datetime
 from sqlalchemy import String, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.models.base import Base
+from utils.validations import format_date_to_br
 
 if TYPE_CHECKING:
     # Import for type checking only to avoid circular dependency
@@ -73,6 +75,42 @@ class Intern(Base):
     visits: Mapped[List["Visit"]] = relationship(
         "Visit", back_populates="intern", cascade="all, delete-orphan"
     )
+
+    @property
+    def status(self) -> str:
+        """
+        Dynamically determines the intern's status based on current date.
+        
+        Returns:
+            str: 'Ativo', 'Concluído', 'A Iniciar', or 'Incompleto'.
+        """
+        if not self.start_date or not self.end_date:
+            return "Incompleto"
+
+        try:
+            # Assumes dates are stored in ISO format (YYYY-MM-DD)
+            today = datetime.now().date()
+            start = datetime.strptime(self.start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(self.end_date, "%Y-%m-%d").date()
+
+            if today < start:
+                return "A Iniciar"
+            elif start <= today <= end:
+                return "Ativo"
+            else:
+                return "Concluído"
+        except (ValueError, TypeError):
+            return "Erro de Data"
+
+    @property
+    def formatted_start_date(self) -> str:
+        """Returns the start date in BR format (DD/MM/YYYY)."""
+        return format_date_to_br(self.start_date) or "-"
+
+    @property
+    def formatted_end_date(self) -> str:
+        """Returns the end date in BR format (DD/MM/YYYY)."""
+        return format_date_to_br(self.end_date) or "-"
 
     def __repr__(self) -> str:
         """Returns a string representation of the Intern instance."""

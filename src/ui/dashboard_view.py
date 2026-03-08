@@ -288,24 +288,10 @@ class DashboardView(QWidget):
         """
         interns = self.i_service.get_all_interns()
 
-        total_interns = len(interns)
-        no_venue_count = sum(1 for i in interns if not i.venue_id)
-
-        # Calculate total pending documents for the KPI card
-        total_pending_items = 0
-        for i in interns:
-            docs = self.d_service.get_documents_by_intern(i.intern_id)
-            if not docs or any(d.status != "Aprovado" for d in docs):
-                total_pending_items += 1
-
-        # Calculate meetings held in the current month
-        all_meetings = self.m_service.repo.get_all()
-        now = datetime.now()
-        meetings_month = sum(
-            1
-            for m in all_meetings
-            if datetime.strptime(m.meeting_date, "%Y-%m-%d").month == now.month
-        )
+        total_interns = self.i_service.repo.count_total()
+        no_venue_count = self.i_service.repo.count_without_venue()
+        total_pending_items = self.d_service.count_total_pending()
+        meetings_month = self.m_service.repo.count_this_month()
 
         self._update_card_value(self.card_total, total_interns)
         self._update_card_value(self.card_no_venue, no_venue_count)

@@ -11,7 +11,7 @@ class EvaluationCriteriaRepository:
     Repository responsible for persistence and retrieval of EvaluationCriteria entities.
 
     This class encapsulates database operations for the criteria used in intern
-    evaluations using SQLAlchemy 2.0.
+    evaluations using SQLAlchemy 2.0 with managed session lifecycle.
     """
 
     def __init__(self, db: Any = None, session: Optional[Session] = None):
@@ -24,74 +24,69 @@ class EvaluationCriteriaRepository:
         """
         self._session = session
 
-    @property
-    def session(self) -> Session:
-        """Returns the active session or gets a new one from the manager."""
-        return self._session or db_manager.get_session()
-
     def get_all(self) -> List[EvaluationCriteria]:
         """
         Retrieves all evaluation criteria stored in the database.
-
-        Returns:
-            List[EvaluationCriteria]: A list of all criteria model instances.
         """
-        stmt = select(EvaluationCriteria).order_by(EvaluationCriteria.name.asc())
-        return list(self.session.scalars(stmt).all())
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(EvaluationCriteria).order_by(EvaluationCriteria.name.asc())
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_id(self, criteria_id: int) -> Optional[EvaluationCriteria]:
         """
         Retrieves a single evaluation criteria by its ID.
-
-        Args:
-            criteria_id (int): The unique identifier of the criteria.
-
-        Returns:
-            Optional[EvaluationCriteria]: The criteria instance if found, otherwise None.
         """
-        return self.session.get(EvaluationCriteria, criteria_id)
+        session = self._session or db_manager.get_session()
+        try:
+            return session.get(EvaluationCriteria, criteria_id)
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def save(self, criteria: EvaluationCriteria) -> int:
         """
         Persists a new EvaluationCriteria entity to the database.
-
-        Args:
-            criteria (EvaluationCriteria): The entity to be saved.
-
-        Returns:
-            int: The generated ID for the new criteria.
         """
-        self.session.add(criteria)
-        self.session.commit()
-        return criteria.criteria_id
+        if self._session:
+            self._session.add(criteria)
+            self._session.flush()
+            return criteria.criteria_id
+
+        with db_manager.session_scope() as session:
+            session.add(criteria)
+            session.flush()
+            return criteria.criteria_id
 
     def update(self, criteria: EvaluationCriteria) -> bool:
         """
         Updates an existing EvaluationCriteria record.
-
-        Args:
-            criteria (EvaluationCriteria): The entity with updated data.
-
-        Returns:
-            bool: True if the update was successful.
         """
-        self.session.merge(criteria)
-        self.session.commit()
-        return True
+        if self._session:
+            self._session.merge(criteria)
+            return True
+
+        with db_manager.session_scope() as session:
+            session.merge(criteria)
+            return True
 
     def delete(self, criteria_id: int) -> bool:
         """
         Deletes an evaluation criteria record from the database by its ID.
-
-        Args:
-            criteria_id (int): The unique identifier of the criteria to delete.
-
-        Returns:
-            bool: True if the deletion was successful.
         """
-        criteria = self.get_by_id(criteria_id)
-        if criteria:
-            self.session.delete(criteria)
-            self.session.commit()
-            return True
-        return False
+        if self._session:
+            criteria = self._session.get(EvaluationCriteria, criteria_id)
+            if criteria:
+                self._session.delete(criteria)
+                return True
+            return False
+
+        with db_manager.session_scope() as session:
+            criteria = session.get(EvaluationCriteria, criteria_id)
+            if criteria:
+                session.delete(criteria)
+                return True
+            return False

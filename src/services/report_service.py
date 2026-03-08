@@ -370,12 +370,8 @@ class ReportService:
         else:
             obs_data: list = []
             for obs in observations:
-                date_str = getattr(obs, "date", getattr(obs, "created_at", "S/D"))
-                text_str = getattr(
-                    obs,
-                    "text",
-                    getattr(obs, "description", getattr(obs, "content", str(obs))),
-                )
+                date_str = obs.last_update or "S/D"
+                text_str = obs.observation or "Sem conteúdo"
 
                 obs_data.append(
                     [str(date_str), Paragraph(str(text_str), styles["NormalText"])]

@@ -81,4 +81,8 @@ class DocumentService(BaseService[Document]):
         self.repo.create_batch(docs_to_create)
 
     def count_total_pending(self) -> int:
+        """
+        Calculates the total number of documents across all interns 
+        that are not in 'Aprovado' status.
+        """
         return self.repo.count_pending()

@@ -1,5 +1,5 @@
 from typing import List, Optional, Any
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from core.models.meeting import Meeting
@@ -11,7 +11,7 @@ class MeetingRepository:
     Repository responsible for persistence and retrieval of Meeting entities.
 
     This class handles the database interactions for supervisory meetings
-    using SQLAlchemy 2.0.
+    using SQLAlchemy 2.0 with managed session lifecycle.
     """
 
     def __init__(self, db: Any = None, session: Optional[Session] = None):
@@ -24,39 +24,33 @@ class MeetingRepository:
         """
         self._session = session
 
-    @property
-    def session(self) -> Session:
-        """Returns the active session or gets a new one from the manager."""
-        return self._session or db_manager.get_session()
-
     def get_all(self) -> List[Meeting]:
         """
         Retrieves all meetings stored in the database.
-
-        Results are ordered by date in descending order.
-
-        Returns:
-            List[Meeting]: A list of all Meeting model instances.
         """
-        stmt = select(Meeting).order_by(Meeting.meeting_date.desc())
-        return list(self.session.scalars(stmt).all())
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Meeting).order_by(Meeting.meeting_date.desc())
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_intern_id(self, intern_id: int) -> List[Meeting]:
         """
         Retrieves all meetings for a specific intern.
-
-        Args:
-            intern_id (int): The ID of the intern.
-
-        Returns:
-            List[Meeting]: A list of Meeting instances for that intern.
         """
-        stmt = (
-            select(Meeting)
-            .where(Meeting.intern_id == intern_id)
-            .order_by(Meeting.meeting_date.desc())
-        )
-        return list(self.session.scalars(stmt).all())
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = (
+                select(Meeting)
+                .where(Meeting.intern_id == intern_id)
+                .order_by(Meeting.meeting_date.desc())
+            )
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     # Keep alias for compatibility
     get_by_intern = get_by_intern_id
@@ -64,56 +58,73 @@ class MeetingRepository:
     def get_by_id(self, meeting_id: int) -> Optional[Meeting]:
         """
         Retrieves a single meeting by its ID.
-
-        Args:
-            meeting_id (int): The unique identifier.
-
-        Returns:
-            Optional[Meeting]: The Meeting instance if found, otherwise None.
         """
-        return self.session.get(Meeting, meeting_id)
+        session = self._session or db_manager.get_session()
+        try:
+            return session.get(Meeting, meeting_id)
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def save(self, meeting: Meeting) -> int:
         """
         Persists a new Meeting entity to the database.
-
-        Args:
-            meeting (Meeting): The entity to be saved.
-
-        Returns:
-            int: The generated ID for the new meeting.
         """
-        self.session.add(meeting)
-        self.session.commit()
-        return meeting.meeting_id
+        if self._session:
+            self._session.add(meeting)
+            self._session.flush()
+            return meeting.meeting_id
+
+        with db_manager.session_scope() as session:
+            session.add(meeting)
+            session.flush()
+            return meeting.meeting_id
 
     def update(self, meeting: Meeting) -> bool:
         """
         Updates an existing Meeting record.
-
-        Args:
-            meeting (Meeting): The meeting instance with updated data.
-
-        Returns:
-            bool: True if the update was successful.
         """
-        self.session.merge(meeting)
-        self.session.commit()
-        return True
+        if self._session:
+            self._session.merge(meeting)
+            return True
+
+        with db_manager.session_scope() as session:
+            session.merge(meeting)
+            return True
 
     def delete(self, meeting_id: int) -> bool:
         """
         Permanently deletes a Meeting record by its ID.
-
-        Args:
-            meeting_id (int): The unique identifier of the meeting.
-
-        Returns:
-            bool: True if the deletion was successful.
         """
-        meeting = self.get_by_id(meeting_id)
-        if meeting:
-            self.session.delete(meeting)
-            self.session.commit()
-            return True
-        return False
+        if self._session:
+            meeting = self._session.get(Meeting, meeting_id)
+            if meeting:
+                self._session.delete(meeting)
+                return True
+            return False
+
+        with db_manager.session_scope() as session:
+            meeting = session.get(Meeting, meeting_id)
+            if meeting:
+                session.delete(meeting)
+                return True
+            return False
+
+    def count_this_month(self) -> int:
+        """
+        Counts meetings that occurred in the current calendar month.
+        """
+        session = self._session or db_manager.get_session()
+        try:
+            # SQLite strftime format: %m for month (01-12)
+            current_month = func.strftime("%m", "now")
+            current_year = func.strftime("%Y", "now")
+            
+            stmt = select(func.count(Meeting.meeting_id)).where(
+                func.strftime("%m", Meeting.meeting_date) == current_month,
+                func.strftime("%Y", Meeting.meeting_date) == current_year
+            )
+            return session.scalar(stmt) or 0
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()

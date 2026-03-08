@@ -1,5 +1,5 @@
 from typing import List, Optional, Any
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from core.models.document import Document
@@ -11,7 +11,7 @@ class DocumentRepository:
     Repository responsible for persistence and retrieval of Document entities.
 
     This class encapsulates database operations for the documents associated 
-    with an Intern using SQLAlchemy 2.0.
+    with an Intern using SQLAlchemy 2.0 with managed session lifecycle.
     """
 
     def __init__(self, db: Any = None, session: Optional[Session] = None):
@@ -24,91 +24,92 @@ class DocumentRepository:
         """
         self._session = session
 
-    @property
-    def session(self) -> Session:
-        """Returns the active session or gets a new one from the manager."""
-        return self._session or db_manager.get_session()
-
     def get_by_intern_id(self, intern_id: int) -> List[Document]:
         """
         Retrieves all documents associated with a specific intern.
-
-        Args:
-            intern_id (int): ID of the intern.
-
-        Returns:
-            List[Document]: List of document instances.
         """
-        stmt = select(Document).where(Document.intern_id == intern_id)
-        return list(self.session.scalars(stmt).all())
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Document).where(Document.intern_id == intern_id)
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_id(self, document_id: int) -> Optional[Document]:
         """
         Retrieves a single document by its ID.
-
-        Args:
-            document_id (int): The primary key ID.
-
-        Returns:
-            Optional[Document]: The Document instance if found, otherwise None.
         """
-        return self.session.get(Document, document_id)
+        session = self._session or db_manager.get_session()
+        try:
+            return session.get(Document, document_id)
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def save(self, document: Document) -> int:
         """
         Persists a new Document entity to the database.
-
-        Args:
-            document (Document): The document instance to save.
-
-        Returns:
-            int: The generated ID for the new document.
         """
-        self.session.add(document)
-        self.session.commit()
-        return document.document_id
+        if self._session:
+            self._session.add(document)
+            self._session.flush()
+            return document.document_id
+
+        with db_manager.session_scope() as session:
+            session.add(document)
+            session.flush()
+            return document.document_id
 
     def update(self, document: Document) -> bool:
         """
         Updates an existing Document record.
-
-        Args:
-            document (Document): The document instance with updated data.
-
-        Returns:
-            bool: True if the update was successful.
         """
-        self.session.merge(document)
-        self.session.commit()
-        return True
+        if self._session:
+            self._session.merge(document)
+            return True
+
+        with db_manager.session_scope() as session:
+            session.merge(document)
+            return True
 
     def delete(self, document_id: int) -> bool:
         """
         Deletes a document record by its ID.
-
-        Args:
-            document_id (int): The ID of the document to remove.
-
-        Returns:
-            bool: True if the deletion was successful.
         """
-        doc = self.get_by_id(document_id)
-        if doc:
-            self.session.delete(doc)
-            self.session.commit()
-            return True
-        return False
+        if self._session:
+            doc = self._session.get(Document, document_id)
+            if doc:
+                self._session.delete(doc)
+                return True
+            return False
+
+        with db_manager.session_scope() as session:
+            doc = session.get(Document, document_id)
+            if doc:
+                session.delete(doc)
+                return True
+            return False
 
     def create_batch(self, documents: List[Document]):
         """
         Saves multiple Document entities in a single transaction.
-
-        Args:
-            documents (List[Document]): List of document instances to save.
         """
+        if self._session:
+            self._session.add_all(documents)
+            return
+
+        with db_manager.session_scope() as session:
+            session.add_all(documents)
+
+    def count_pending(self) -> int:
+        """
+        Counts the total number of documents that are not in 'Aprovado' status.
+        """
+        session = self._session or db_manager.get_session()
         try:
-            self.session.add_all(documents)
-            self.session.commit()
-        except Exception as e:
-            self.session.rollback()
-            raise e
+            stmt = select(func.count(Document.document_id)).where(Document.status != "Aprovado")
+            return session.scalar(stmt) or 0
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()

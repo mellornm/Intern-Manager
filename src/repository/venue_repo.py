@@ -11,7 +11,7 @@ class VenueRepository:
     Repository responsible for persistence and retrieval of Venue entities.
 
     This class implements the Repository pattern using SQLAlchemy 2.0
-    for data access related to the `Venue` domain model.
+    with managed session lifecycle.
     """
 
     def __init__(self, db: Optional[Any] = None, session: Optional[Session] = None):
@@ -24,87 +24,81 @@ class VenueRepository:
         """
         self._session = session
 
-    @property
-    def session(self) -> Session:
-        """Returns the active session or gets a new one from the manager."""
-        return self._session or db_manager.get_session()
-
     def get_all(self) -> List[Venue]:
         """
         Retrieves all venues stored in the database, ordered by name.
-
-        Returns:
-            List[Venue]: A list of Venue model instances.
         """
-        stmt = select(Venue).order_by(Venue.venue_name.asc())
-        return list(self.session.scalars(stmt).all())
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Venue).order_by(Venue.venue_name.asc())
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_id(self, venue_id: int) -> Optional[Venue]:
         """
         Retrieves a single venue by its unique ID.
-
-        Args:
-            venue_id (int): The primary key ID.
-
-        Returns:
-            Optional[Venue]: The Venue instance if found, otherwise None.
         """
-        return self.session.get(Venue, venue_id)
+        session = self._session or db_manager.get_session()
+        try:
+            return session.get(Venue, venue_id)
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def get_by_name(self, name: str) -> Optional[Venue]:
         """
-        Retrieves a single venue by its name.
-
-        Args:
-            name (str): The name of the venue.
-
-        Returns:
-            Optional[Venue]: The Venue instance if found, otherwise None.
+        Retrieves a single venue by its unique name.
         """
-        stmt = select(Venue).where(Venue.venue_name == name)
-        return self.session.scalars(stmt).first()
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Venue).where(Venue.venue_name == name)
+            return session.scalars(stmt).first()
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()
 
     def save(self, venue: Venue) -> int:
         """
         Persists a new Venue entity to the database.
-
-        Args:
-            venue (Venue): The venue model instance to save.
-
-        Returns:
-            int: The generated ID for the new venue.
         """
-        self.session.add(venue)
-        self.session.commit()
-        return venue.venue_id
+        if self._session:
+            self._session.add(venue)
+            self._session.flush()
+            return venue.venue_id
+
+        with db_manager.session_scope() as session:
+            session.add(venue)
+            session.flush()
+            return venue.venue_id
 
     def update(self, venue: Venue) -> bool:
         """
         Updates an existing Venue record.
-
-        Args:
-            venue (Venue): The venue instance with updated data.
-
-        Returns:
-            bool: True if the update was successful.
         """
-        self.session.merge(venue)
-        self.session.commit()
-        return True
+        if self._session:
+            self._session.merge(venue)
+            return True
+
+        with db_manager.session_scope() as session:
+            session.merge(venue)
+            return True
 
     def delete(self, venue_id: int) -> bool:
         """
         Deletes a venue record by its ID.
-
-        Args:
-            venue_id (int): The ID of the venue to remove.
-
-        Returns:
-            bool: True if the deletion was successful.
         """
-        venue = self.get_by_id(venue_id)
-        if venue:
-            self.session.delete(venue)
-            self.session.commit()
-            return True
-        return False
+        if self._session:
+            venue = self._session.get(Venue, venue_id)
+            if venue:
+                self._session.delete(venue)
+                return True
+            return False
+
+        with db_manager.session_scope() as session:
+            venue = session.get(Venue, venue_id)
+            if venue:
+                session.delete(venue)
+                return True
+            return False

@@ -16,6 +16,7 @@ classifiers = [
     "Framework :: PySide6",
 ]
 dependencies = [
+    "alembic>=1.18.4",
     "matplotlib>=3.10.8",
     "openpyxl>=3.1.5",
     "packaging>=25.0",
@@ -25,6 +26,7 @@ dependencies = [
     "reportlab>=4.4.10",
     "requests>=2.32.5",
     "ruff>=0.14.9",
+    "sqlalchemy>=2.0.48",
 ]
 
 [tool.pytest.ini_options]

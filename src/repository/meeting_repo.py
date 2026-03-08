@@ -1,59 +1,45 @@
-from data.database import DatabaseConnector
+from typing import List, Optional, Any
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.models.meeting import Meeting
-from typing import Optional, List
-from sqlite3 import Connection, Cursor
+from data.database import db_manager
 
 
 class MeetingRepository:
     """
     Repository responsible for persistence and retrieval of Meeting entities.
 
-    This class handles the database interactions for supervisory meetings,
-    tracking attendance and dates. It maps directly to the `meetings` table.
-
-    Attributes:
-        db (DatabaseConnector): The database connector instance.
-        conn (Connection): Active SQLite connection.
-        cursor (Cursor): Active SQLite cursor.
+    This class handles the database interactions for supervisory meetings
+    using SQLAlchemy 2.0.
     """
 
-    def __init__(self, db: DatabaseConnector):
+    def __init__(self, db: Any = None, session: Optional[Session] = None):
         """
-        Initializes the repository with an active database connection.
+        Initializes the repository.
 
         Args:
-            db (DatabaseConnector): An initialized connector with an open connection.
-
-        Raises:
-            RuntimeError: If the connector does not hold a valid connection or cursor.
+            db (Any): Legacy db connector (ignored but kept for compatibility).
+            session (Optional[Session]): An active SQLAlchemy session.
         """
-        self.db = db
-        if db.conn is None or db.cursor is None:
-            raise RuntimeError(
-                "Repository initialized without a valid database connection."
-            )
-        self.conn: Connection = db.conn
-        self.cursor: Cursor = db.cursor
+        self._session = session
+
+    @property
+    def session(self) -> Session:
+        """Returns the active session or gets a new one from the manager."""
+        return self._session or db_manager.get_session()
 
     def get_all(self) -> List[Meeting]:
         """
         Retrieves all meetings stored in the database.
 
-        Results are ordered by date in descending order (newest first).
+        Results are ordered by date in descending order.
 
         Returns:
-            List[Meeting]: A list of all Meeting objects.
+            List[Meeting]: A list of all Meeting model instances.
         """
-        sql_query = "SELECT meeting_id, intern_id, meeting_date, is_intern_present FROM meetings ORDER BY meeting_date DESC"
-        self.cursor.execute(sql_query)
-        results = self.cursor.fetchall()
-
-        meetings = []
-        for row in results:
-            meeting = Meeting.from_db_row(row)
-            if meeting:
-                meetings.append(meeting)
-        return meetings
+        stmt = select(Meeting).order_by(Meeting.meeting_date.desc())
+        return list(self.session.scalars(stmt).all())
 
     def get_by_intern_id(self, intern_id: int) -> List[Meeting]:
         """
@@ -63,19 +49,16 @@ class MeetingRepository:
             intern_id (int): The ID of the intern.
 
         Returns:
-            List[Meeting]: A list of Meeting objects for that intern.
+            List[Meeting]: A list of Meeting instances for that intern.
         """
-        sql_query = "SELECT meeting_id, intern_id, meeting_date, is_intern_present FROM meetings WHERE intern_id = ? ORDER BY meeting_date DESC"
-        self.cursor.execute(sql_query, (intern_id,))
-        results = self.cursor.fetchall()
+        stmt = (
+            select(Meeting)
+            .where(Meeting.intern_id == intern_id)
+            .order_by(Meeting.meeting_date.desc())
+        )
+        return list(self.session.scalars(stmt).all())
 
-        meetings = []
-        for row in results:
-            meeting = Meeting.from_db_row(row)
-            if meeting:
-                meetings.append(meeting)
-        return meetings
-
+    # Keep alias for compatibility
     get_by_intern = get_by_intern_id
 
     def get_by_id(self, meeting_id: int) -> Optional[Meeting]:
@@ -86,13 +69,9 @@ class MeetingRepository:
             meeting_id (int): The unique identifier.
 
         Returns:
-            Optional[Meeting]: The Meeting object if found, otherwise None.
+            Optional[Meeting]: The Meeting instance if found, otherwise None.
         """
-        sql_query = "SELECT meeting_id, intern_id, meeting_date, is_intern_present FROM meetings WHERE meeting_id = ?"
-        self.cursor.execute(sql_query, (meeting_id,))
-        row = self.cursor.fetchone()
-
-        return Meeting.from_db_row(row)
+        return self.session.get(Meeting, meeting_id)
 
     def save(self, meeting: Meeting) -> int:
         """
@@ -102,32 +81,25 @@ class MeetingRepository:
             meeting (Meeting): The entity to be saved.
 
         Returns:
-            int: The ID of the newly created meeting.
-
-        Raises:
-            ValueError: If the meeting object already has an ID.
-            RuntimeError: If the database fails to return the new ID.
+            int: The generated ID for the new meeting.
         """
-        if meeting.meeting_id is not None:
-            raise ValueError(
-                "Cannot save a meeting that already has an ID. Use update instead."
-            )
+        self.session.add(meeting)
+        self.session.commit()
+        return meeting.meeting_id
 
-        sql_query = """
-        INSERT INTO meetings (intern_id, meeting_date, is_intern_present)
-        VALUES (?, ?, ?)
+    def update(self, meeting: Meeting) -> bool:
         """
-        # Converts True/False to 1/0 for SQLite
-        present_int = 1 if meeting.is_intern_present else 0
+        Updates an existing Meeting record.
 
-        data = (meeting.intern_id, meeting.meeting_date, present_int)
+        Args:
+            meeting (Meeting): The meeting instance with updated data.
 
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-
-        if self.cursor.lastrowid is None:
-            raise RuntimeError("Database failed to generate an ID for the new meeting.")
-        return self.cursor.lastrowid
+        Returns:
+            bool: True if the update was successful.
+        """
+        self.session.merge(meeting)
+        self.session.commit()
+        return True
 
     def delete(self, meeting_id: int) -> bool:
         """
@@ -138,45 +110,10 @@ class MeetingRepository:
 
         Returns:
             bool: True if the deletion was successful.
-
-        Raises:
-            ValueError: If the meeting_id is invalid.
         """
-        if not meeting_id:
-            raise ValueError("ID inválido para deleção.")
-
-        # SQL direto usando o ID
-        sql_query = "DELETE FROM meetings WHERE meeting_id = ?"
-        self.cursor.execute(sql_query, (meeting_id,))
-        self.conn.commit()
-        return self.cursor.rowcount > 0
-
-    def update(self, meeting: Meeting) -> bool:
-        """
-        Atualiza um Meeting existente.
-
-        Args:
-            meeting (Meeting): Entidade com meeting_id preenchido.
-
-        Returns:
-            bool: True se alguma linha foi atualizada.
-        """
-        if meeting.meeting_id is None:
-            raise ValueError("Não é possível atualizar um meeting sem ID.")
-
-        sql_query = """
-        UPDATE meetings
-        SET intern_id = ?, meeting_date = ?, is_intern_present = ?
-        WHERE meeting_id = ?
-        """
-        present_int = 1 if meeting.is_intern_present else 0
-        data = (
-            meeting.intern_id,
-            meeting.meeting_date,
-            present_int,
-            meeting.meeting_id,
-        )
-
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        meeting = self.get_by_id(meeting_id)
+        if meeting:
+            self.session.delete(meeting)
+            self.session.commit()
+            return True
+        return False

@@ -1,60 +1,45 @@
-from data.database import DatabaseConnector
+from typing import List, Optional, Any
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.models.observation import Observation
-from typing import Optional, List
-from sqlite3 import Connection, Cursor
+from data.database import db_manager
 
 
 class ObservationRepository:
     """
     Repository responsible for persistence and retrieval of Observation entities.
 
-    This class provides an interface to the `observations` table, allowing
-    the management of free-text notes associated with interns.
-
-    Attributes:
-        db (DatabaseConnector): The database connector instance.
-        conn (Connection): Active SQLite connection.
-        cursor (Cursor): Active SQLite cursor.
+    This class provides an interface to the `observations` table using 
+    SQLAlchemy 2.0 for management of free-text notes associated with interns.
     """
 
-    def __init__(self, db: DatabaseConnector):
+    def __init__(self, db: Any = None, session: Optional[Session] = None):
         """
-        Initializes the repository with an active database connection.
+        Initializes the repository.
 
         Args:
-            db (DatabaseConnector): An initialized connector with an open connection.
-
-        Raises:
-            RuntimeError: If the connector does not hold a valid connection or cursor.
+            db (Any): Legacy db connector (ignored but kept for compatibility).
+            session (Optional[Session]): An active SQLAlchemy session.
         """
-        self.db = db
-        if db.conn is None or db.cursor is None:
-            raise RuntimeError(
-                "Repository initialized without a valid database connection."
-            )
-        self.conn: Connection = db.conn
-        self.cursor: Cursor = db.cursor
+        self._session = session
+
+    @property
+    def session(self) -> Session:
+        """Returns the active session or gets a new one from the manager."""
+        return self._session or db_manager.get_session()
 
     def get_all(self) -> List[Observation]:
         """
         Retrieves all observations stored in the database.
 
-        The results are ordered by the last update timestamp in descending order,
-        showing the most recent notes first.
+        The results are ordered by the last update timestamp in descending order.
 
         Returns:
-            List[Observation]: A list of all Observation objects.
+            List[Observation]: A list of all Observation model instances.
         """
-        sql_query = "SELECT observation_id, intern_id, observation, last_update FROM observations ORDER BY last_update DESC"
-        self.cursor.execute(sql_query)
-        results = self.cursor.fetchall()
-
-        observations = []
-        for row in results:
-            obs = Observation.from_db_row(row)
-            if obs:
-                observations.append(obs)
-        return observations
+        stmt = select(Observation).order_by(Observation.last_update.desc())
+        return list(self.session.scalars(stmt).all())
 
     def get_by_intern_id(self, intern_id: int) -> List[Observation]:
         """
@@ -64,18 +49,14 @@ class ObservationRepository:
             intern_id (int): The ID of the intern.
 
         Returns:
-            List[Observation]: A list of Observation objects for that intern.
+            List[Observation]: A list of Observation instances for that intern.
         """
-        sql_query = "SELECT observation_id, intern_id, observation, last_update FROM observations WHERE intern_id = ? ORDER BY last_update DESC"
-        self.cursor.execute(sql_query, (intern_id,))
-        results = self.cursor.fetchall()
-
-        observations = []
-        for row in results:
-            obs = Observation.from_db_row(row)
-            if obs:
-                observations.append(obs)
-        return observations
+        stmt = (
+            select(Observation)
+            .where(Observation.intern_id == intern_id)
+            .order_by(Observation.last_update.desc())
+        )
+        return list(self.session.scalars(stmt).all())
 
     def get_by_id(self, observation_id: int) -> Optional[Observation]:
         """
@@ -85,13 +66,9 @@ class ObservationRepository:
             observation_id (int): The unique identifier.
 
         Returns:
-            Optional[Observation]: The Observation object if found, otherwise None.
+            Optional[Observation]: The Observation instance if found, otherwise None.
         """
-        sql_query = "SELECT observation_id, intern_id, observation, last_update FROM observations WHERE observation_id = ?"
-        self.cursor.execute(sql_query, (observation_id,))
-        row = self.cursor.fetchone()
-
-        return Observation.from_db_row(row)
+        return self.session.get(Observation, observation_id)
 
     def save(self, observation: Observation) -> int:
         """
@@ -101,66 +78,25 @@ class ObservationRepository:
             observation (Observation): The entity to be saved.
 
         Returns:
-            int: The ID of the newly created observation.
-
-        Raises:
-            ValueError: If the observation object already has an ID.
-            RuntimeError: If the database fails to return the new ID.
+            int: The generated ID for the new observation.
         """
-        if observation.observation_id is not None:
-            raise ValueError(
-                "Cannot save an observation that already has an ID. Use update instead."
-            )
-
-        sql_query = """
-        INSERT INTO observations (intern_id, observation)
-        VALUES (?, ?)
-        """
-        data = (observation.intern_id, observation.observation)
-
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-
-        if self.cursor.lastrowid is None:
-            raise RuntimeError(
-                "Database failed to generate an ID for the new observation."
-            )
-        return self.cursor.lastrowid
+        self.session.add(observation)
+        self.session.commit()
+        return observation.observation_id
 
     def update(self, observation: Observation) -> bool:
         """
         Updates an existing Observation record in the database.
 
-        Updates the text content and automatically refreshes the `last_update`
-        timestamp using SQLite's local time function.
-
         Args:
-            observation (Observation): The entity with updated data. Must have an ID.
+            observation (Observation): The entity with updated data.
 
         Returns:
-            bool: True if the update was successful, False otherwise.
-
-        Raises:
-            ValueError: If the observation object does not have an ID.
+            bool: True if the update was successful.
         """
-        if observation.observation_id is None:
-            raise ValueError("Cannot update an observation without an ID.")
-
-        sql_query = """
-        UPDATE observations SET
-            observation = ?,
-            last_update = strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime')
-        WHERE observation_id = ?
-        """
-
-        data = (
-            observation.observation,
-            observation.observation_id,
-        )
-
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        self.session.merge(observation)
+        self.session.commit()
+        return True
 
     def delete(self, observation_id: int) -> bool:
         """
@@ -171,15 +107,10 @@ class ObservationRepository:
 
         Returns:
             bool: True if the deletion was successful.
-
-        Raises:
-            ValueError: If the observation_id is invalid.
         """
-        if not observation_id:
-            raise ValueError("ID inválido para deleção.")
-
-        # SQL direto usando o ID
-        sql_query = "DELETE FROM observations WHERE observation_id = ?"
-        self.cursor.execute(sql_query, (observation_id,))
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        observation = self.get_by_id(observation_id)
+        if observation:
+            self.session.delete(observation)
+            self.session.commit()
+            return True
+        return False

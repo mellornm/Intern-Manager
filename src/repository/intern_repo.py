@@ -1,8 +1,9 @@
-from sqlite3 import Connection, Cursor, Row
 from typing import List, Optional
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.models.intern import Intern
-from data.database import DatabaseConnector
+from data.database import db_manager
 
 
 class InternRepository:
@@ -10,134 +11,102 @@ class InternRepository:
     Repository responsible for persistence and retrieval of Intern entities.
 
     This class encapsulates database operations for interns, mapping directly
-    to the `interns` table. It handles creation, reading, updating, and deletion
-    of intern records.
-
-    Attributes:
-        db (DatabaseConnector): The database connector instance.
-        conn (Connection): Active SQLite connection.
-        cursor (Cursor): Active SQLite cursor.
+    to the `interns` table using SQLAlchemy 2.0.
     """
 
-    def __init__(self, db: DatabaseConnector):
+    def __init__(self, session: Optional[Session] = None):
         """
-        Initializes the repository with an active database connection.
+        Initializes the repository with a SQLAlchemy session.
 
         Args:
-            db (DatabaseConnector): An initialized connector with an open connection.
-
-        Raises:
-            RuntimeError: If the connector does not hold a valid connection or cursor.
+            session (Optional[Session]): An active SQLAlchemy session. 
+                If None, it uses the global db_manager.
         """
-        self.db = db
-        if db.conn is None or db.cursor is None:
-            raise RuntimeError(
-                "Repository initialized without a valid database connection."
-            )
-        self.conn: Connection = db.conn
-        self.cursor: Cursor = db.cursor
+        self._session = session
 
-        self.conn.row_factory = Row
+    @property
+    def session(self) -> Session:
+        """Returns the active session or gets a new one from the manager."""
+        return self._session or db_manager.get_session()
 
     def get_all(self) -> List[Intern]:
-        sql_query = """
-        SELECT intern_id, name, registration_number, term, email, start_date, end_date, 
-        working_days, working_hours, venue_id FROM interns ORDER BY name COLLATE NOCASE ASC
         """
-        self.cursor.execute(sql_query)
-        results = self.cursor.fetchall()
+        Retrieves all interns from the database, ordered by name.
 
-        interns = []
-        for row in results:
-            obj = Intern.from_db_row(row)
-            if obj is not None:
-                interns.append(obj)
-        return interns
+        Returns:
+            List[Intern]: A list of Intern model instances.
+        """
+        stmt = select(Intern).order_by(Intern.name.asc())
+        return list(self.session.scalars(stmt).all())
 
     def get_by_id(self, intern_id: int) -> Optional[Intern]:
-        sql_query = """
-        SELECT intern_id, name, registration_number, term, email, start_date, end_date, 
-        working_days, working_hours, venue_id FROM interns WHERE intern_id = ?
         """
-        self.cursor.execute(sql_query, (intern_id,))
-        row = self.cursor.fetchone()
-        return Intern.from_db_row(row)
+        Retrieves an intern by their unique ID.
+
+        Args:
+            intern_id (int): The primary key ID.
+
+        Returns:
+            Optional[Intern]: The Intern instance if found, otherwise None.
+        """
+        return self.session.get(Intern, intern_id)
 
     def get_by_registration_number(self, ra: str) -> Optional[Intern]:
-        sql_query = """
-        SELECT intern_id, name, registration_number, term, email, start_date, end_date, 
-        working_days, working_hours, venue_id FROM interns WHERE registration_number = ?
         """
-        self.cursor.execute(sql_query, (ra,))
-        row = self.cursor.fetchone()
-        return Intern.from_db_row(row)
+        Retrieves an intern by their unique registration number (RA).
+
+        Args:
+            ra (str): The registration number to search for.
+
+        Returns:
+            Optional[Intern]: The Intern instance if found, otherwise None.
+        """
+        stmt = select(Intern).where(Intern.registration_number == ra)
+        return self.session.scalars(stmt).first()
 
     def save(self, intern: Intern) -> int:
-        if intern.intern_id is not None:
-            raise ValueError("Cannot save an intern that already has an ID.")
-
-        # A ordem aqui deve bater EXATAMENTE com a ordem do 'data' abaixo
-        sql_query = """
-        INSERT INTO interns (
-            name, registration_number, term, email, 
-            start_date, end_date, working_days, working_hours, venue_id
-        ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
+        Persists a new Intern entity to the database.
 
-        data = (
-            intern.name,
-            intern.registration_number,
-            intern.term,
-            intern.email,
-            intern.start_date,
-            intern.end_date,
-            intern.working_days,  # Confirme que isso é Dias
-            intern.working_hours,  # Confirme que isso é Horas
-            intern.venue_id,
-        )
+        Args:
+            intern (Intern): The intern model instance to save.
 
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-        if self.cursor.lastrowid is None:
-            raise RuntimeError("Database failed to generate an ID.")
-        return self.cursor.lastrowid
+        Returns:
+            int: The generated ID for the new intern.
+        """
+        self.session.add(intern)
+        self.session.commit()
+        return intern.intern_id
 
     def update(self, intern: Intern) -> bool:
-        if intern.intern_id is None:
-            raise ValueError("Cannot update an intern without an ID.")
-
-        sql_query = """
-        UPDATE interns SET
-            name = ?, registration_number = ?, term = ?, email = ?, 
-            start_date = ?, end_date = ?, working_days = ?, working_hours = ?, 
-            venue_id = ?, 
-            last_update = strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime')
-        WHERE intern_id = ?
         """
-        data = (
-            intern.name,
-            intern.registration_number,
-            intern.term,
-            intern.email,
-            intern.start_date,
-            intern.end_date,
-            intern.working_days,
-            intern.working_hours,
-            intern.venue_id,
-            intern.intern_id,
-        )
+        Updates an existing Intern record in the database.
 
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        Args:
+            intern (Intern): The intern instance with updated data.
+
+        Returns:
+            bool: True if the update was successful.
+        """
+        # In SQLAlchemy, merge or simply committing an attached object handles updates.
+        # We use merge to ensure it's attached to the current session.
+        self.session.merge(intern)
+        self.session.commit()
+        return True
 
     def delete(self, intern_id: int) -> bool:
-        if not intern_id:
-            raise ValueError("ID inválido para deleção.")
+        """
+        Deletes an intern record by their ID.
 
-        # SQL direto usando o ID
-        sql_query = "DELETE FROM interns WHERE intern_id = ?"
-        self.cursor.execute(sql_query, (intern_id,))
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        Args:
+            intern_id (int): The ID of the intern to remove.
+
+        Returns:
+            bool: True if the deletion was successful.
+        """
+        intern = self.get_by_id(intern_id)
+        if intern:
+            self.session.delete(intern)
+            self.session.commit()
+            return True
+        return False

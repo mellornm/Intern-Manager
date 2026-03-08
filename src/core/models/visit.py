@@ -1,43 +1,48 @@
-from typing import Optional, Any
-from dataclasses import dataclass
+from typing import Optional, TYPE_CHECKING
+from sqlalchemy import String, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.models.base import Base
+
+if TYPE_CHECKING:
+    # Import for type checking only to avoid circular dependency
+    from core.models.intern import Intern
+    from core.models.venue import Venue
 
 
-@dataclass
-class Visit:
+class Visit(Base):
     """
-    Domain model representing a technical visit by an intern to a venue.
+    SQLAlchemy model representing a technical visit by an intern to a venue.
 
-    This class maps to the 'visits' table and handles tracking of visit
-    locations, dates, and optional evidence like photos and observations.
+    This class maps to the 'visits' table and tracks when and where an
+    intern performed a technical activity, including photos and notes.
     """
 
-    intern_id: int
-    venue_id: int
-    visit_date: str
+    __tablename__ = "visits"
 
-    observation: Optional[str] = None
-    photo_path: Optional[str] = None
-    visit_id: Optional[int] = None
+    # Primary key
+    visit_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    @classmethod
-    def from_db_row(cls, row: Any) -> Optional["Visit"]:
-        """
-        Hydrates a Visit instance from a database dictionary row.
+    # Core visit details
+    visit_date: Mapped[str] = mapped_column(String, nullable=False)
+    observation: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    photo_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-        Args:
-            row (Any): A row-like object (dict or sqlite3.Row).
+    # Foreign key to the intern performing the visit
+    intern_id: Mapped[int] = mapped_column(
+        ForeignKey("interns.intern_id", ondelete="CASCADE"), nullable=False
+    )
 
-        Returns:
-            Optional[Visit]: A populated Visit instance or None if row is empty.
-        """
-        if not row:
-            return None
+    # Foreign key to the venue visited
+    venue_id: Mapped[int] = mapped_column(
+        ForeignKey("venues.venue_id", ondelete="CASCADE"), nullable=False
+    )
 
-        return cls(
-            intern_id=row["intern_id"],
-            venue_id=row["venue_id"],
-            visit_date=row["visit_date"],
-            observation=row["observation"],
-            photo_path=row["photo_path"],
-            visit_id=row["visit_id"],
-        )
+    # Relationships
+    # Uses string references to avoid circular imports during runtime
+    intern: Mapped["Intern"] = relationship("Intern", back_populates="visits")
+    venue: Mapped["Venue"] = relationship("Venue", back_populates="visits")
+
+    def __repr__(self) -> str:
+        """Returns a string representation of the Visit instance."""
+        return f"<Visit(id={self.visit_id}, intern_id={self.intern_id}, venue_id={self.venue_id}, date='{self.visit_date}')>"

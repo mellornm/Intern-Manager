@@ -18,6 +18,10 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite3
+*.db.legacy
 
 # User data & media
 **/photos/

@@ -1,38 +1,44 @@
-from typing import Optional, Any
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
+from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.models.base import Base
+
+if TYPE_CHECKING:
+    # Import for type checking only to avoid circular dependency
+    from core.models.intern import Intern
 
 
-@dataclass
-class Meeting:
+class Meeting(Base):
     """
-    Domain model representing a supervisory meeting with an intern.
+    SQLAlchemy model representing a supervisory meeting with an intern.
 
-    This class mirrors the structure of the `meetings` table in the database.
+    This class maps to the 'meetings' table and tracks attendance for
+    individual supervision sessions.
     """
 
-    intern_id: int
-    meeting_date: str
-    is_intern_present: bool
+    __tablename__ = "meetings"
 
-    meeting_id: Optional[int] = None
+    # Primary key
+    meeting_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    @classmethod
-    def from_db_row(cls, row: Any) -> Optional["Meeting"]:
-        """
-        Creates a Meeting instance from a database row.
+    # Core meeting fields
+    meeting_date: Mapped[str] = mapped_column(String, nullable=False)
+    meeting_topic: Mapped[str] = mapped_column(
+        String, server_default="General Follow-up", nullable=False
+    )
 
-        Args:
-            row (Any): A dictionary-like object representing a row.
+    # Boolean stored as Integer (0 or 1) in SQLite
+    is_intern_present: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # Foreign key relationship to the intern
+    intern_id: Mapped[int] = mapped_column(
+        ForeignKey("interns.intern_id", ondelete="CASCADE"), nullable=False
+    )
 
-        Returns:
-            Optional[Meeting]: A Meeting instance or None.
-        """
-        if not row:
-            return None
+    # Relationship to the Intern model
+    # Uses a string reference to avoid circular imports during runtime
+    intern: Mapped["Intern"] = relationship("Intern", back_populates="meetings")
 
-        return cls(
-            intern_id=row["intern_id"],
-            meeting_date=row["meeting_date"],
-            is_intern_present=bool(row["is_intern_present"]),
-            meeting_id=row["meeting_id"],
-        )
+    def __repr__(self) -> str:
+        """Returns a string representation of the Meeting instance."""
+        return f"<Meeting(id={self.meeting_id}, date='{self.meeting_date}', present={self.is_intern_present})>"

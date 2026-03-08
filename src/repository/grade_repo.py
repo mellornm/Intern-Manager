@@ -1,7 +1,9 @@
-from data.database import DatabaseConnector
+from typing import List, Optional, Any
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.models.grade import Grade
-from typing import Optional, List
-from sqlite3 import Connection, Cursor
+from data.database import db_manager
 
 
 class GradeRepository:
@@ -9,31 +11,23 @@ class GradeRepository:
     Repository responsible for persistence and retrieval of Grade entities.
 
     This class manages the specific grades assigned to interns based on
-    evaluation criteria. It maps directly to the `grades` table.
-
-    Attributes:
-        db (DatabaseConnector): The database connector instance.
-        conn (Connection): Active SQLite connection.
-        cursor (Cursor): Active SQLite cursor.
+    evaluation criteria using SQLAlchemy 2.0.
     """
 
-    def __init__(self, db: DatabaseConnector):
+    def __init__(self, db: Any = None, session: Optional[Session] = None):
         """
-        Initializes the repository with an active database connection.
+        Initializes the repository.
 
         Args:
-            db (DatabaseConnector): An initialized connector with an open connection.
-
-        Raises:
-            RuntimeError: If the connector does not hold a valid connection or cursor.
+            db (Any): Legacy db connector (ignored but kept for compatibility).
+            session (Optional[Session]): An active SQLAlchemy session.
         """
-        self.db = db
-        if db.conn is None or db.cursor is None:
-            raise RuntimeError(
-                "Repository initialized without a valid database connection."
-            )
-        self.conn: Connection = db.conn
-        self.cursor: Cursor = db.cursor
+        self._session = session
+
+    @property
+    def session(self) -> Session:
+        """Returns the active session or gets a new one from the manager."""
+        return self._session or db_manager.get_session()
 
     def get_all(self) -> List[Grade]:
         """
@@ -42,22 +36,10 @@ class GradeRepository:
         The results are ordered by the last update timestamp in descending order.
 
         Returns:
-            List[Grade]: A list of all Grade objects.
+            List[Grade]: A list of all Grade model instances.
         """
-        sql_query = """
-        SELECT grade_id, intern_id, criteria_id, value, last_update 
-        FROM grades 
-        ORDER BY last_update DESC
-        """
-        self.cursor.execute(sql_query)
-        results = self.cursor.fetchall()
-
-        grades = []
-        for row in results:
-            grade = Grade.from_db_row(row)
-            if grade:
-                grades.append(grade)
-        return grades
+        stmt = select(Grade).order_by(Grade.last_update.desc())
+        return list(self.session.scalars(stmt).all())
 
     def get_by_intern_id(self, intern_id: int) -> List[Grade]:
         """
@@ -67,22 +49,10 @@ class GradeRepository:
             intern_id (int): The ID of the intern.
 
         Returns:
-            List[Grade]: A list of Grade objects for that intern.
+            List[Grade]: A list of Grade instances for that intern.
         """
-        sql_query = """
-        SELECT grade_id, intern_id, criteria_id, value, last_update 
-        FROM grades 
-        WHERE intern_id = ?
-        """
-        self.cursor.execute(sql_query, (intern_id,))
-        results = self.cursor.fetchall()
-
-        grades = []
-        for row in results:
-            grade = Grade.from_db_row(row)
-            if grade:
-                grades.append(grade)
-        return grades
+        stmt = select(Grade).where(Grade.intern_id == intern_id)
+        return list(self.session.scalars(stmt).all())
 
     def get_by_id(self, grade_id: int) -> Optional[Grade]:
         """
@@ -92,17 +62,9 @@ class GradeRepository:
             grade_id (int): The unique identifier of the grade.
 
         Returns:
-            Optional[Grade]: The Grade object if found, otherwise None.
+            Optional[Grade]: The Grade instance if found, otherwise None.
         """
-        sql_query = """
-        SELECT grade_id, intern_id, criteria_id, value, last_update 
-        FROM grades 
-        WHERE grade_id = ?
-        """
-        self.cursor.execute(sql_query, (grade_id,))
-        row = self.cursor.fetchone()
-
-        return Grade.from_db_row(row)
+        return self.session.get(Grade, grade_id)
 
     def save(self, grade: Grade) -> int:
         """
@@ -112,62 +74,25 @@ class GradeRepository:
             grade (Grade): The entity to be saved.
 
         Returns:
-            int: The ID of the newly created grade.
-
-        Raises:
-            ValueError: If the grade object already has an ID.
-            RuntimeError: If the database fails to return the new ID.
+            int: The generated ID for the new grade.
         """
-        if grade.grade_id is not None:
-            raise ValueError(
-                "Cannot save a grade that already has an ID. Use update instead."
-            )
-
-        sql_query = """
-        INSERT INTO grades (intern_id, criteria_id, value)
-        VALUES (?, ?, ?)
-        """
-        data = (grade.intern_id, grade.criteria_id, grade.value)
-
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-
-        if self.cursor.lastrowid is None:
-            raise RuntimeError("Database failed to generate an ID for the new grade.")
-
-        return self.cursor.lastrowid
+        self.session.add(grade)
+        self.session.commit()
+        return grade.grade_id
 
     def update(self, grade: Grade) -> bool:
         """
         Updates an existing Grade record.
 
-        Updates the value and automatically sets `last_update` to the current
-        local time via SQLite's strftime.
-
         Args:
-            grade (Grade): The grade entity with updated data. Must have an ID.
+            grade (Grade): The grade instance with updated data.
 
         Returns:
-            bool: True if the update was successful, False otherwise.
-
-        Raises:
-            ValueError: If the grade object does not have an ID.
+            bool: True if the update was successful.
         """
-        if grade.grade_id is None:
-            raise ValueError("Cannot update a grade without an ID.")
-
-        sql_query = """
-        UPDATE grades SET
-            value = ?,
-            last_update = strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime')
-        WHERE grade_id = ?
-        """
-
-        data = (grade.value, grade.grade_id)
-
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        self.session.merge(grade)
+        self.session.commit()
+        return True
 
     def delete(self, grade_id: int) -> bool:
         """
@@ -177,16 +102,11 @@ class GradeRepository:
             grade_id (int): The unique identifier of the grade to delete.
 
         Returns:
-            bool: True if the deletion was successful (row removed), False otherwise.
-
-        Raises:
-            ValueError: If the grade_id is invalid (0 or None).
+            bool: True if the deletion was successful.
         """
-        if not grade_id:
-            raise ValueError("ID inválido para deleção.")
-
-        # SQL direto usando o ID
-        sql_query = "DELETE FROM grades WHERE grade_id = ?"
-        self.cursor.execute(sql_query, (grade_id,))
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        grade = self.get_by_id(grade_id)
+        if grade:
+            self.session.delete(grade)
+            self.session.commit()
+            return True
+        return False

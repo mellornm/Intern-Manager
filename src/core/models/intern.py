@@ -1,88 +1,79 @@
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Optional
-from utils.validations import format_date_to_br
+from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import String, ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.models.base import Base
+
+if TYPE_CHECKING:
+    # Import for type checking only to avoid circular dependency
+    from core.models.venue import Venue
+    from core.models.document import Document
+    from core.models.grade import Grade
+    from core.models.meeting import Meeting
+    from core.models.observation import Observation
+    from core.models.visit import Visit
 
 
-@dataclass
-class Intern:
+class Intern(Base):
     """
-    Domain model representing an intern.
+    SQLAlchemy model representing an intern in the system.
 
-    This class mirrors the structure of the `interns` table in the database.
-
-    Attributes:
-        name (str): The intern's full name.
-        registration_number (str): Unique registration number for the intern.
-        term (str): The academic term or period of the internship.
-        intern_id (Optional[int]): Unique database identifier. None if the intern has not yet been persisted.
-        email (Optional[str]): The intern's email address.
-        start_date (Optional[str]): The start date of the internship in 'YYYY-MM-DD' format.
-        end_date (Optional[str]): The end date of the internship in 'YYYY-MM-DD' format.
-        working_days (Optional[str]): Description of the intern's working days.
-        working_hours (Optional[str]): Description of the intern's working hours.
-        venue_id (Optional[int]): Foreign key to the venue where the intern works.
+    This class maps to the 'interns' table and stores all personal and
+    contractual information for a student participating in the program.
     """
 
-    name: str
-    registration_number: str
-    term: str
+    __tablename__ = "interns"
 
-    intern_id: Optional[int] = None
-    email: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    # Primary key with auto-increment is handled by SQLAlchemy for Integer PKs
+    intern_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    working_days: Optional[str] = None
-    working_hours: Optional[str] = None
+    # Core identity fields
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    registration_number: Mapped[str] = mapped_column(
+        String, unique=True, nullable=False
+    )
+    email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    venue_id: Optional[int] = None
+    # Internship period and scheduling
+    start_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    end_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    working_days: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    working_hours: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    @classmethod
-    def from_db_row(cls, row: Any) -> Optional["Intern"]:
-        """
-        Creates an Intern instance from a database row.
+    # Academic classification
+    term: Mapped[str] = mapped_column(String, nullable=False)
 
-        Args:
-            row (Any): A dictionary-like object representing a row from the database's 'interns' table.
+    # Audit column - defaults to current timestamp on SQLite
+    last_update: Mapped[Optional[str]] = mapped_column(
+        String,
+        server_default=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
+        onupdate=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
+    )
 
-        Returns:
-            Optional[Intern]: An Intern instance populated with data from the row, or None if the input row is None.
-        """
-        if not row:
-            return None
+    # Foreign key relationship to the venue
+    venue_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("venues.venue_id"), nullable=True
+    )
 
-        return cls(
-            intern_id=row["intern_id"],
-            name=row["name"],
-            registration_number=row["registration_number"],
-            term=row["term"],
-            email=row["email"],
-            start_date=row["start_date"],
-            end_date=row["end_date"],
-            working_days=row["working_days"],
-            working_hours=row["working_hours"],
-            venue_id=row["venue_id"],
-        )
+    # Relationships to other models
+    # Uses a string reference to avoid circular imports during runtime
+    venue: Mapped[Optional["Venue"]] = relationship("Venue", back_populates="interns")
+    documents: Mapped[List["Document"]] = relationship(
+        "Document", back_populates="intern", cascade="all, delete-orphan"
+    )
+    grades: Mapped[List["Grade"]] = relationship(
+        "Grade", back_populates="intern", cascade="all, delete-orphan"
+    )
+    meetings: Mapped[List["Meeting"]] = relationship(
+        "Meeting", back_populates="intern", cascade="all, delete-orphan"
+    )
+    observations: Mapped[List["Observation"]] = relationship(
+        "Observation", back_populates="intern", cascade="all, delete-orphan"
+    )
+    visits: Mapped[List["Visit"]] = relationship(
+        "Visit", back_populates="intern", cascade="all, delete-orphan"
+    )
 
-    @property
-    def status(self) -> str:
-        if not self.end_date:
-            return "Ativo"
-        try:
-            end = datetime.strptime(self.end_date, "%Y-%m-%d")
-            return "Concluído" if end < datetime.now() else "Ativo"
-        except ValueError:
-            return "Ativo"
-
-    @property
-    def formatted_start_date(self) -> str:
-        if not self.start_date:
-            return "-"
-        return format_date_to_br(self.start_date)
-
-    @property
-    def formatted_end_date(self) -> str:
-        if not self.end_date:
-            return "-"
-        return format_date_to_br(self.end_date)
+    def __repr__(self) -> str:
+        """Returns a string representation of the Intern instance."""
+        return f"<Intern(id={self.intern_id}, name='{self.name}', ra='{self.registration_number}')>"

@@ -1,47 +1,46 @@
-from typing import Optional, Any
-from dataclasses import dataclass
+from typing import Optional, TYPE_CHECKING
+from sqlalchemy import String, ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.models.base import Base
+
+if TYPE_CHECKING:
+    # Import for type checking only to avoid circular dependency
+    from core.models.intern import Intern
 
 
-@dataclass
-class Observation:
+class Observation(Base):
     """
-    Domain model representing a observation associated with an intern.
+    SQLAlchemy model representing a textual observation about an intern.
 
-    Each Observation stores a textual annotation linked to a specific Intern.
-    An intern may have multiple observations, typically used for notes,
-    observations, or administrative records.
-
-    This class mirrors the structure of the `observations` table in the database.
-
-    Attributes:
-        observation_id (Optional[int]): Unique database identifier. None if the
-            observation has not yet been persisted.
-        intern_id (int): Identifier of the associated intern.
-        observation (str): Textual content of the observation.
-        last_update (Optional[str]): Date string representing the last modification.
+    This class maps to the 'observations' table and stores various notes
+    and administrative records for individual students.
     """
 
-    intern_id: int
-    observation: str
-    observation_id: Optional[int] = None
-    last_update: Optional[str] = None
+    __tablename__ = "observations"
 
-    @classmethod
-    def from_db_row(cls, row: Any) -> Optional["Observation"]:
-        """
-        Creates an Observation instance from a database row.
+    # Primary key
+    observation_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-        Args:
-            row (Any): A dictionary-like object representing a row from the database's 'observations' table.
+    # Core observation content
+    observation: Mapped[str] = mapped_column(String, nullable=False)
 
-        Returns:
-            Optional[Observation]: An Observation instance populated with data from the row, or None if the input row is None.
-        """
-        if not row:
-            return None
-        return cls(
-            observation_id=row["observation_id"],
-            intern_id=row["intern_id"],
-            observation=row["observation"],
-            last_update=row["last_update"],
-        )
+    # Audit column - defaults to current timestamp on SQLite
+    last_update: Mapped[Optional[str]] = mapped_column(
+        String,
+        server_default=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
+        onupdate=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
+    )
+
+    # Foreign key relationship to the intern
+    intern_id: Mapped[int] = mapped_column(
+        ForeignKey("interns.intern_id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Relationship to the Intern model
+    # Uses a string reference to avoid circular imports during runtime
+    intern: Mapped["Intern"] = relationship("Intern", back_populates="observations")
+
+    def __repr__(self) -> str:
+        """Returns a string representation of the Observation instance."""
+        return f"<Observation(id={self.observation_id}, intern_id={self.intern_id})>"

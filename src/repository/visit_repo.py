@@ -1,112 +1,119 @@
-from sqlite3 import Connection, Cursor
-from typing import List, Optional
+from typing import List, Optional, Any
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.models.visit import Visit
-from data.database import DatabaseConnector
+from data.database import db_manager
 
 
 class VisitRepository:
-    def __init__(self, db: DatabaseConnector):
-        self.db = db
-        if db.conn is None or db.cursor is None:
-            raise RuntimeError(
-                "Repository initialized without a valid database connection."
-            )
+    """
+    Repository responsible for persistence and retrieval of Visit entities.
 
-        self.conn: Connection = db.conn
-        self.cursor: Cursor = db.cursor
+    This class handles the database interactions for technical visits 
+    using SQLAlchemy 2.0.
+    """
+
+    def __init__(self, db: Any = None, session: Optional[Session] = None):
+        """
+        Initializes the repository.
+
+        Args:
+            db (Any): Legacy db connector (ignored but kept for compatibility).
+            session (Optional[Session]): An active SQLAlchemy session.
+        """
+        self._session = session
+
+    @property
+    def session(self) -> Session:
+        """Returns the active session or gets a new one from the manager."""
+        return self._session or db_manager.get_session()
 
     def get_all(self) -> List[Visit]:
-        sql_query = "SELECT visit_id, intern_id, venue_id, visit_date, observation, photo_path FROM visits ORDER BY visit_date DESC"
-        self.cursor.execute(sql_query)
-        results = self.cursor.fetchall()
+        """
+        Retrieves all visits stored in the database.
 
-        visits = []
-        for row in results:
-            visit = Visit.from_db_row(row)
-            if visit:
-                visits.append(visit)
-        return visits
+        Results are ordered by date in descending order.
+
+        Returns:
+            List[Visit]: A list of all Visit model instances.
+        """
+        stmt = select(Visit).order_by(Visit.visit_date.desc())
+        return list(self.session.scalars(stmt).all())
 
     def get_by_intern_id(self, intern_id: int) -> List[Visit]:
-        sql_query = "SELECT visit_id, intern_id, venue_id, visit_date, observation, photo_path FROM visits WHERE intern_id = ? ORDER BY visit_date DESC"
-        self.cursor.execute(sql_query, (intern_id,))
-        results = self.cursor.fetchall()
+        """
+        Retrieves all visits associated with a specific intern.
 
-        visits = []
-        for row in results:
-            visit = Visit.from_db_row(row)
-            if visit:
-                visits.append(visit)
-        return visits
+        Args:
+            intern_id (int): The ID of the intern.
 
+        Returns:
+            List[Visit]: A list of Visit instances for that intern.
+        """
+        stmt = (
+            select(Visit)
+            .where(Visit.intern_id == intern_id)
+            .order_by(Visit.visit_date.desc())
+        )
+        return list(self.session.scalars(stmt).all())
+
+    # Keep alias for compatibility
     get_by_intern = get_by_intern_id
 
     def get_by_id(self, visit_id: int) -> Optional[Visit]:
-        sql = "SELECT * FROM visits WHERE visit_id = ?"
-        self.cursor.execute(sql, (visit_id,))
-        row = self.cursor.fetchone()
-        return Visit.from_db_row(row)
+        """
+        Retrieves a single visit by its ID.
+
+        Args:
+            visit_id (int): The unique identifier.
+
+        Returns:
+            Optional[Visit]: The Visit instance if found, otherwise None.
+        """
+        return self.session.get(Visit, visit_id)
 
     def save(self, visit: Visit) -> int:
-        if visit.visit_id is not None:
-            raise ValueError(
-                "Cannot save a visit that already has an ID. Use update instead."
-            )
-
-        sql_query = """
-        INSERT INTO visits (intern_id, venue_id, visit_date, observation, photo_path)
-        VALUES (?, ?, ?, ?, ?)
         """
+        Persists a new Visit entity to the database.
 
-        data = (
-            visit.intern_id,
-            visit.venue_id,
-            visit.visit_date,
-            visit.observation,
-            visit.photo_path,
-        )
+        Args:
+            visit (Visit): The entity to be saved.
 
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-
-        if self.cursor.lastrowid is None:
-            raise RuntimeError("Database failed to generate an ID for the new visit.")
-        return self.cursor.lastrowid
+        Returns:
+            int: The generated ID for the new visit.
+        """
+        self.session.add(visit)
+        self.session.commit()
+        return visit.visit_id
 
     def update(self, visit: Visit) -> bool:
-        if visit.visit_id is None:
-            raise ValueError("Cannot update a visit without ID.")
-
-        sql_query = """
-        UPDATE visits SET
-        intern_id = ?, 
-        venue_id = ?, 
-        visit_date = ?, 
-        observation = ?, 
-        photo_path = ?
-        WHERE visit_id = ?
         """
+        Updates an existing Visit record.
 
-        data = (
-            visit.intern_id,
-            visit.venue_id,
-            visit.visit_date,
-            visit.observation,
-            visit.photo_path,
-            visit.visit_id,
-        )
+        Args:
+            visit (Visit): The visit instance with updated data.
 
-        self.cursor.execute(sql_query, data)
-        self.conn.commit()
-        return self.cursor.rowcount > 0
+        Returns:
+            bool: True if the update was successful.
+        """
+        self.session.merge(visit)
+        self.session.commit()
+        return True
 
     def delete(self, visit_id: int) -> bool:
-        if not visit_id:
-            return False
+        """
+        Deletes a visit record by its ID.
 
-        sql = "DELETE FROM visits WHERE visit_id = ?"
-        self.cursor.execute(sql, (visit_id,))
-        self.conn.commit()
+        Args:
+            visit_id (int): The unique identifier of the visit.
 
-        return self.cursor.rowcount > 0
+        Returns:
+            bool: True if the deletion was successful.
+        """
+        visit = self.get_by_id(visit_id)
+        if visit:
+            self.session.delete(visit)
+            self.session.commit()
+            return True
+        return False

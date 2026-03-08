@@ -1,53 +1,50 @@
-from typing import Optional, Any
-from dataclasses import dataclass
+from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.models.base import Base
+
+if TYPE_CHECKING:
+    # Import for type checking only to avoid circular dependency
+    from core.models.intern import Intern
+    from core.models.visit import Visit
 
 
-@dataclass
-class Venue:
+class Venue(Base):
     """
-    Domain model representing a venue where interns are allocated.
+    SQLAlchemy model representing a venue where interns are allocated.
 
     A Venue represents an organization, unit, or location responsible
     for hosting one or more interns. Each venue may be associated with
     multiple interns.
-
-    This class mirrors the structure of the `venues` table in the database.
-
-    Attributes:
-        venue_id (Optional[int]): Unique database identifier. None if the
-            venue has not yet been persisted.
-        venue_name (str): Name of the venue.
-        venue_address (Optional[str]): Physical address of the venue.
-        supervisor_name (Optional[str]): Name of the responsible supervisor.
-        supervisor_email (Optional[str]): Contact email for the venue.
-        supervisor_phone (Optional[str]): Contact phone number for the venue.
     """
 
-    venue_name: str
-    venue_id: Optional[int] = None
-    venue_address: Optional[str] = None
-    supervisor_name: Optional[str] = None
-    supervisor_email: Optional[str] = None
-    supervisor_phone: Optional[str] = None
+    __tablename__ = "venues"
 
-    @classmethod
-    def from_db_row(cls, row: Any) -> Optional["Venue"]:
-        """
-        Creates a Venue instance from a database row.
+    # Primary key
+    venue_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-        Args:
-            row (Any): A dictionary-like object representing a row from the database's 'venues' table.
+    # Core identification
+    venue_name: Mapped[str] = mapped_column(String, nullable=False)
+    address: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-        Returns:
-            Optional[Venue]: A Venue instance populated with data from the row, or None if the input row is None.
-        """
-        if not row:
-            return None
-        return cls(
-            venue_id=row["venue_id"],
-            venue_name=row["venue_name"],
-            venue_address=row["venue_address"],
-            supervisor_name=row["supervisor_name"],
-            supervisor_email=row["supervisor_email"],
-            supervisor_phone=row["supervisor_phone"],
-        )
+    # Supervisor contact information
+    supervisor_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    supervisor_email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    supervisor_phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # Audit column - defaults to current timestamp
+    last_update: Mapped[Optional[str]] = mapped_column(
+        String,
+        server_default=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
+        onupdate=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
+    )
+
+    # Relationships
+    # One venue can host many interns and receive many visits
+    interns: Mapped[List["Intern"]] = relationship("Intern", back_populates="venue")
+    visits: Mapped[List["Visit"]] = relationship("Visit", back_populates="venue")
+
+    def __repr__(self) -> str:
+        """Returns a string representation of the Venue instance."""
+        return f"<Venue(id={self.venue_id}, name='{self.venue_name}')>"

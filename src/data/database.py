@@ -1,105 +1,74 @@
-import sqlite3
-from sqlite3 import Connection, Cursor
-from typing import Optional
-from config import DB_PATH, SQL_PATH
+import logging
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
+from sqlalchemy.engine import Engine
+from config import DB_PATH
+from core.models.base import Base
+
+logger = logging.getLogger(__name__)
 
 
-class DatabaseConnector:
+class DatabaseManager:
     """
-    Handles the SQLite database connection and schema initialization.
+    Singleton manager for SQLAlchemy engine and session lifecycle.
 
-    This class manages the lifecycle of the SQLite connection, including
-    configuration (foreign keys, row factory) and initial schema execution
-    from an external SQL file.
-
-    Attributes:
-        db_path (Path): Path to the SQLite database file.
-        conn (Optional[Connection]): Active SQLite connection object.
-        cursor (Optional[Cursor]): Active SQLite cursor object.
-        _closed (bool): Internal flag to track connection status.
+    Handles SQLite-specific pragmas for Windows performance and ensures
+    thread-safe session management for the PySide UI.
     """
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(DatabaseManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
     def __init__(self):
-        """
-        Initializes the DatabaseConnector and establishes the connection immediately.
-        """
-        self.db_path = DB_PATH
-        self.conn: Optional[Connection] = None
-        self.cursor: Optional[Cursor] = None
-        self._closed = False
-
-        self.connect()
-
-    def connect(self):
-        """
-        Establish connection to the database and configure PRAGMA settings.
-
-        Sets the row_factory to sqlite3.Row for dictionary-like access and
-        enables foreign key constraints. Also triggers table creation.
-        """
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
-
-        self.cursor = self.conn.cursor()
-        self.cursor.execute("PRAGMA foreign_keys = ON")
-
-        self._create_tables()
-
-    def _create_tables(self):
-        """
-        Reads the SQL script from disk and executes it to initialize the schema.
-
-        Raises:
-            FileNotFoundError: If the SQL file at SQL_PATH does not exist.
-            RuntimeError: If the database connection or cursor is not active.
-        """
-        if not SQL_PATH.exists():
-            raise FileNotFoundError(
-                f"CRITICAL: Arquivo SQL não encontrado em: {SQL_PATH}"
-            )
-
-        if not self.cursor or not self.conn:
-            raise RuntimeError("Database connection not established.")
-
-        with open(SQL_PATH, "r", encoding="utf-8") as f:
-            sql_file = f.read()
-
-        self.cursor.executescript(sql_file)
-        self.conn.commit()
-
-    def rollback(self):
-        """
-        Rolls back the current transaction safely.
-        Ignores sqlite3.Error if the connection is already in a bad state.
-        """
-        if self.conn:
-            try:
-                self.conn.rollback()
-            except sqlite3.Error:
-                pass
-
-    def close(self):
-        """
-        Closes the cursor and connection, releasing resources.
-
-        This method is idempotent and handles exceptions silently during closure
-        to ensure the program doesn't crash while trying to exit.
-        """
-        if getattr(self, "_closed", False):
+        if self._initialized:
             return
 
-        self.rollback()
+        db_url = f"sqlite:///{DB_PATH}"
 
-        if self.cursor:
-            try:
-                self.cursor.close()
-            except Exception:
-                pass
+        self.engine = create_engine(
+            db_url, connect_args={"check_same_thread": False}, echo=False
+        )
 
-        if self.conn:
-            try:
-                self.conn.close()
-            except Exception:
-                pass
+        session_factory = sessionmaker(
+            bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False
+        )
 
-        self._closed = True
+        self.SessionLocal = scoped_session(session_factory)
+
+        self._setup_listeners()
+        self._initialized = True
+        logger.info("Database engine started.")
+
+    def _setup_listeners(self):
+        """
+        Inject critical SQLite pragmas on every new connection.
+        """
+
+        @event.listens_for(Engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+
+            cursor.execute("PRAGMA foreign_keys=ON")
+
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+
+    def get_session(self) -> Session:
+        """Return the current session from the registry."""
+        return self.SessionLocal()
+
+    def create_tables(self):
+        """
+        Bootstrap tables from models.
+        Only use this for dev; Alembic handles migrations in prod.
+        """
+        Base.metadata.create_all(bind=self.engine)
+
+
+db_manager = DatabaseManager()

@@ -170,7 +170,7 @@ class GradeDialog(QDialog):
             return
 
         criteria_list = self.criteria_service.list_active_criteria()
-        existing_grades = self.grade_service.get_grades_by_intern(self.intern.intern_id)
+        existing_grades = self.grade_service.get_by_intern_id(self.intern.intern_id)
         grade_map = {g.criteria_id: g.value for g in existing_grades}
 
         # Limpar layout anterior se houver

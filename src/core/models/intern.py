@@ -80,7 +80,7 @@ class Intern(Base):
     def status(self) -> str:
         """
         Dynamically determines the intern's status based on current date.
-        
+
         Returns:
             str: 'Ativo', 'Concluído', 'A Iniciar', or 'Incompleto'.
         """

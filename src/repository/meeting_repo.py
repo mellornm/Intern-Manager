@@ -52,9 +52,6 @@ class MeetingRepository:
             if self._session is None:
                 db_manager.SessionLocal.remove()
 
-    # Keep alias for compatibility
-    get_by_intern = get_by_intern_id
-
     def get_by_id(self, meeting_id: int) -> Optional[Meeting]:
         """
         Retrieves a single meeting by its ID.
@@ -119,10 +116,10 @@ class MeetingRepository:
             # SQLite strftime format: %m for month (01-12)
             current_month = func.strftime("%m", "now")
             current_year = func.strftime("%Y", "now")
-            
+
             stmt = select(func.count(Meeting.meeting_id)).where(
                 func.strftime("%m", Meeting.meeting_date) == current_month,
-                func.strftime("%Y", Meeting.meeting_date) == current_year
+                func.strftime("%Y", Meeting.meeting_date) == current_year,
             )
             return session.scalar(stmt) or 0
         finally:

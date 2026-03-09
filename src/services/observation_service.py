@@ -77,6 +77,6 @@ class ObservationService(BaseService[Observation]):
         """
         return self.delete(observation, "observation")
 
-    def get_observations_by_intern(self, intern_id: int):
+    def get_by_intern_id(self, intern_id: int):
         """Retorna todas as observações de um estagiário."""
         return self.repo.get_by_intern_id(intern_id)

@@ -10,7 +10,7 @@ class DocumentRepository:
     """
     Repository responsible for persistence and retrieval of Document entities.
 
-    This class encapsulates database operations for the documents associated 
+    This class encapsulates database operations for the documents associated
     with an Intern using SQLAlchemy 2.0 with managed session lifecycle.
     """
 
@@ -108,7 +108,9 @@ class DocumentRepository:
         """
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(func.count(Document.document_id)).where(Document.status != "Aprovado")
+            stmt = select(func.count(Document.document_id)).where(
+                Document.status != "Aprovado"
+            )
             return session.scalar(stmt) or 0
         finally:
             if self._session is None:

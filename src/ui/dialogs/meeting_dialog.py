@@ -136,9 +136,9 @@ class MeetingDialog(QDialog):
         input_frame.setObjectName("inputFrame")
         input_frame.setStyleSheet(f"""
             QFrame#inputFrame {{
-                background-color: {COLORS['white']}; 
+                background-color: {COLORS["white"]}; 
                 border-radius: 10px; 
-                border: 1px solid {COLORS['border']};
+                border: 1px solid {COLORS["border"]};
             }}
         """)
         input_layout = QVBoxLayout(input_frame)
@@ -147,7 +147,7 @@ class MeetingDialog(QDialog):
 
         # Row 1: Date and Presence
         row1 = QHBoxLayout()
-        
+
         # Date field
         date_box = QVBoxLayout()
         date_box.addWidget(QLabel("Data:"))
@@ -158,9 +158,9 @@ class MeetingDialog(QDialog):
         self.date_edit.setFixedWidth(140)
         date_box.addWidget(self.date_edit)
         row1.addLayout(date_box)
-        
+
         row1.addSpacing(30)
-        
+
         # Presence checkbox
         presence_box = QVBoxLayout()
         presence_box.addStretch()
@@ -168,7 +168,7 @@ class MeetingDialog(QDialog):
         self.chk_present.setChecked(True)
         presence_box.addWidget(self.chk_present)
         row1.addLayout(presence_box)
-        
+
         row1.addStretch()
         input_layout.addLayout(row1)
 
@@ -177,10 +177,12 @@ class MeetingDialog(QDialog):
         topic_box = QVBoxLayout()
         topic_box.addWidget(QLabel("Assunto / Pauta:"))
         self.txt_topic = QLineEdit()
-        self.txt_topic.setPlaceholderText("Ex: Orientação de estágio, Feedback mensal, Plano de trabalho...")
+        self.txt_topic.setPlaceholderText(
+            "Ex: Orientação de estágio, Feedback mensal, Plano de trabalho..."
+        )
         topic_box.addWidget(self.txt_topic)
         row2.addLayout(topic_box)
-        
+
         btn_add = QPushButton(" Lançar")
         btn_add.setIcon(qta.icon("fa5s.plus", color="white"))
         btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -194,7 +196,7 @@ class MeetingDialog(QDialog):
         """)
         btn_add.clicked.connect(self.add_meeting)
         row2.addWidget(btn_add)
-        
+
         input_layout.addLayout(row2)
         layout.addWidget(input_frame)
 
@@ -209,7 +211,7 @@ class MeetingDialog(QDialog):
         header_view.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header_view.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         header_view.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        
+
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setShowGrid(False)
@@ -278,7 +280,7 @@ class MeetingDialog(QDialog):
             # Column 3: Presence (with color coding)
             status = "Presente" if m.is_intern_present else "Ausente"
             item_status = QTableWidgetItem(status)
-            
+
             if not m.is_intern_present:
                 item_status.setForeground(QColor(COLORS["danger"]))
             else:
@@ -294,7 +296,9 @@ class MeetingDialog(QDialog):
     def add_meeting(self):
         """Collects data from UI and creates a new meeting record."""
         if not self.intern.intern_id:
-            QMessageBox.warning(self, "Atenção", "O aluno deve estar salvo antes de registrar reuniões.")
+            QMessageBox.warning(
+                self, "Atenção", "O aluno deve estar salvo antes de registrar reuniões."
+            )
             return
 
         iso_date = self.date_edit.date().toString("yyyy-MM-dd")
@@ -305,7 +309,7 @@ class MeetingDialog(QDialog):
             intern_id=self.intern.intern_id,
             meeting_date=iso_date,
             is_intern_present=is_present,
-            meeting_topic=topic
+            meeting_topic=topic,
         )
 
         try:

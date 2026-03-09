@@ -1,9 +1,7 @@
-from typing import List
 from services.base_service import BaseService
 from core.models.grade import Grade
 from repository.grade_repo import GradeRepository
 from repository.evaluation_criteria_repo import EvaluationCriteriaRepository
-from utils.validations import validate_required_fields
 
 REQUIRED_FIELDS = {
     "intern_id": "Estagiário",
@@ -64,63 +62,11 @@ class GradeService(BaseService[Grade]):
                 f"({criteria.name}: Max {criteria.weight})."
             )
 
-    def get_intern_grades(self, intern_id: int) -> List[Grade]:
-        """
-        Retrieves all grades associated with a specific intern.
-
-        Args:
-            intern_id (int): The intern's identifier.
-
-        Returns:
-            List[Grade]: A list of Grade objects.
-        """
-        return self.repo.get_by_intern_id(intern_id)
-
-    def add_new_grade(self, grade: Grade) -> int:
-        """
-        Validates business rules and saves a new grade.
-
-        Args:
-            grade (Grade): The grade to be saved.
-
-        Returns:
-            int: The ID of the newly created grade.
-        """
-        validate_required_fields(grade, REQUIRED_FIELDS)
-        self._validate_grade_value(grade)
-        return self.repo.save(grade)
-
-    def update_grade(self, grade) -> bool:
-        """
-        Validates and updates an existing grade.
-
-        Args:
-            grade (Grade): The grade to be updated.
-
-        Returns:
-            bool: True if successful.
-        """
-        self._ensure_has_id(grade, "grade")
-        self._validate_required_fields(grade)
-        return self.repo.update(grade)
-
-    def delete_grade(self, grade: Grade) -> bool:
-        """
-        Removes a grade from the system.
-
-        Args:
-            grade (Grade): The grade to be deleted.
-
-        Returns:
-            bool: True if successful.
-        """
-        return self.delete(grade, "grade")
-
-    def get_grades_by_intern(self, intern_id: int) -> list[Grade]:
+    def get_by_intern_id(self, intern_id: int) -> list[Grade]:
         """
         Retrieves all grades for a specific intern (Safe Version).
 
-        Unlike `get_intern_grades`, this method handles empty/None IDs gracefully.
+        This method handles empty/None IDs gracefully.
 
         Args:
             intern_id (int): The intern's identifier.

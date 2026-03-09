@@ -307,7 +307,7 @@ class VisitDialog(QDialog):
         if not self.intern.intern_id:
             return
 
-        visits = self.service.get_visits_by_intern(self.intern.intern_id)
+        visits = self.service.get_by_intern_id(self.intern.intern_id)
 
         all_venues = self.venue_service.get_all()
         venue_map = {v.venue_id: v.venue_name for v in all_venues}

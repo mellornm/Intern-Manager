@@ -150,7 +150,7 @@ class ObservationDialog(QDialog):
         if not self.intern.intern_id:
             return
 
-        obs_list = self.service.get_observations_by_intern(self.intern.intern_id)
+        obs_list = self.service.get_by_intern_id(self.intern.intern_id)
         self.list_widget.clear()
 
         self.list_widget.setIconSize(QSize(20, 20))

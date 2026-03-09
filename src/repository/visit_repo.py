@@ -10,7 +10,7 @@ class VisitRepository:
     """
     Repository responsible for persistence and retrieval of Visit entities.
 
-    This class handles the database interactions for technical visits 
+    This class handles the database interactions for technical visits
     using SQLAlchemy 2.0 with managed session lifecycle.
     """
 
@@ -51,9 +51,6 @@ class VisitRepository:
         finally:
             if self._session is None:
                 db_manager.SessionLocal.remove()
-
-    # Keep alias for compatibility
-    get_by_intern = get_by_intern_id
 
     def get_by_id(self, visit_id: int) -> Optional[Visit]:
         """

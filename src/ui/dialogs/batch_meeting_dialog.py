@@ -149,8 +149,8 @@ class BatchMeetingDialog(QDialog):
         self.date_edit.setStyleSheet(f"""
             QDateEdit {{ 
                 padding: 8px; 
-                background-color: {COLORS['white']}; 
-                border: 1px solid {COLORS['border']}; 
+                background-color: {COLORS["white"]}; 
+                border: 1px solid {COLORS["border"]}; 
                 border-radius: 6px; 
             }}
         """)
@@ -164,15 +164,17 @@ class BatchMeetingDialog(QDialog):
         lbl_topic = QLabel("Assunto / Pauta:")
         lbl_topic.setFixedWidth(120)
         self.txt_topic = QLineEdit()
-        self.txt_topic.setPlaceholderText("Ex: Reunião Coletiva de Orientação, Feedback de Grupo...")
+        self.txt_topic.setPlaceholderText(
+            "Ex: Reunião Coletiva de Orientação, Feedback de Grupo..."
+        )
         self.txt_topic.setStyleSheet(f"""
             QLineEdit {{ 
                 padding: 8px; 
-                background-color: {COLORS['white']}; 
-                border: 1px solid {COLORS['border']}; 
+                background-color: {COLORS["white"]}; 
+                border: 1px solid {COLORS["border"]}; 
                 border-radius: 6px; 
             }}
-            QLineEdit:focus {{ border: 1px solid {COLORS['primary']}; }}
+            QLineEdit:focus {{ border: 1px solid {COLORS["primary"]}; }}
         """)
         topic_row.addWidget(lbl_topic)
         topic_row.addWidget(self.txt_topic)
@@ -232,7 +234,7 @@ class BatchMeetingDialog(QDialog):
                 item.setCheckState(Qt.CheckState.Unchecked)
 
                 self.list_interns.addItem(item)
-        
+
         # Uncheck "Select All" when list is refreshed
         self.chk_all.setCheckState(Qt.CheckState.Unchecked)
 
@@ -254,7 +256,9 @@ class BatchMeetingDialog(QDialog):
                 selected_ids.append(item.data(Qt.ItemDataRole.UserRole))
 
         if not selected_ids:
-            QMessageBox.warning(self, "Atenção", "Selecione ao menos um aluno para a reunião!")
+            QMessageBox.warning(
+                self, "Atenção", "Selecione ao menos um aluno para a reunião!"
+            )
             return
 
         date_str = self.date_edit.date().toString("yyyy-MM-dd")
@@ -264,16 +268,18 @@ class BatchMeetingDialog(QDialog):
         try:
             for iid in selected_ids:
                 meeting = Meeting(
-                    intern_id=iid, 
-                    meeting_date=date_str, 
+                    intern_id=iid,
+                    meeting_date=date_str,
                     is_intern_present=True,
-                    meeting_topic=topic
+                    meeting_topic=topic,
                 )
                 self.meeting_service.add_new_meeting(meeting)
                 count += 1
 
             QMessageBox.information(
-                self, "Sucesso", f"Registro concluído! {count} reuniões criadas com sucesso."
+                self,
+                "Sucesso",
+                f"Registro concluído! {count} reuniões criadas com sucesso.",
             )
             self.accept()
         except Exception as e:

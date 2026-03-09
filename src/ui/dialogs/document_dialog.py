@@ -322,7 +322,7 @@ class DocumentDialog(QDialog):
         if not self.intern.intern_id:
             return
 
-        docs = self.service.get_documents_by_intern(self.intern.intern_id)
+        docs = self.service.get_by_intern_id(self.intern.intern_id)
 
         self.table.setRowCount(0)
         for row, d in enumerate(docs):

@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Optional
 
 import qtawesome as qta
@@ -367,7 +366,7 @@ class DashboardView(QWidget):
         if filter_name == "Todos":
             # If 'All', an intern is 'pending' if any document is not approved.
             for i in interns:
-                docs = self.d_service.get_documents_by_intern(i.intern_id)
+                docs = self.d_service.get_by_intern_id(i.intern_id)
                 if not docs or any(d.status != "Aprovado" for d in docs):
                     pending_count += 1
                 else:
@@ -375,7 +374,7 @@ class DashboardView(QWidget):
         else:
             # For a specific document type
             for i in interns:
-                docs = self.d_service.get_documents_by_intern(i.intern_id)
+                docs = self.d_service.get_by_intern_id(i.intern_id)
                 target_docs = [
                     d for d in docs if filter_name.lower() in d.document_name.lower()
                 ]

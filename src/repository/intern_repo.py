@@ -78,7 +78,7 @@ class InternRepository:
             self._session.add(intern)
             self._session.flush()
             return intern.intern_id
-        
+
         with db_manager.session_scope() as session:
             session.add(intern)
             session.flush()

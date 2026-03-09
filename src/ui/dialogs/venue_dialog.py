@@ -1,17 +1,18 @@
 from typing import Optional
+
+import qtawesome as qta
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLineEdit,
-    QLabel,
-    QPushButton,
     QFrame,
     QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt, QSize
-import qtawesome as qta
 
 from core.models.venue import Venue
 from ui.styles import COLORS
@@ -177,21 +178,33 @@ class VenueDialog(QDialog):
         if not self.venue:
             return
         self.txt_name.setText(self.venue.venue_name)
-        self.txt_address.setText(self.venue.venue_address or "")
+        self.txt_address.setText(self.venue.address or "")
         self.txt_supervisor.setText(self.venue.supervisor_name or "")
         self.txt_email.setText(self.venue.supervisor_email or "")
         self.txt_phone.setText(self.venue.supervisor_phone or "")
 
     def validate_and_accept(self):
-        if not self.txt_name.text().strip():
-            # Um balãozinho de erro mais bonito seria ideal, mas QMessageBox serve
-            from PySide6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
+        from utils.validations import validate_email_format
 
+        name = self.txt_name.text().strip()
+        email = self.txt_email.text().strip()
+
+        if not name:
             QMessageBox.warning(
                 self, "Campo Obrigatório", "Por favor, informe o Nome do Local."
             )
             self.txt_name.setFocus()
             return
+
+        if email:
+            try:
+                validate_email_format(email)
+            except ValueError as e:
+                QMessageBox.warning(self, "E-mail Inválido", str(e))
+                self.txt_email.setFocus()
+                return
+
         self.accept()
 
     def get_data(self) -> Venue:
@@ -199,7 +212,7 @@ class VenueDialog(QDialog):
         return Venue(
             venue_id=v_id,
             venue_name=self.txt_name.text().strip(),
-            venue_address=self.txt_address.text().strip() or None,
+            address=self.txt_address.text().strip() or None,
             supervisor_name=self.txt_supervisor.text().strip() or None,
             supervisor_email=self.txt_email.text().strip() or None,
             supervisor_phone=self.txt_phone.text().strip() or None,

@@ -8,7 +8,7 @@ class ExportService:
     """
     Service responsible for exporting database tables to Excel.
 
-    Uses SQLAlchemy engine to fetch raw data from all tables and 
+    Uses SQLAlchemy engine to fetch raw data from all tables and
     openpyxl to generate a styled spreadsheet.
     """
 
@@ -38,7 +38,7 @@ class ExportService:
             "meetings",
             "grades",
             "evaluation_criteria",
-            "visits"
+            "visits",
         ]
 
         wb = openpyxl.Workbook()

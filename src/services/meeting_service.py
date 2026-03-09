@@ -59,7 +59,7 @@ class MeetingService(BaseService[Meeting]):
 
         return self.repo.save(meeting)
 
-    def get_meetings_by_intern(self, intern_id: int):
+    def get_by_intern_id(self, intern_id: int):
         """
         Retrieves all meetings associated with a specific intern.
 

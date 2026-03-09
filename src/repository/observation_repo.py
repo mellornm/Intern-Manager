@@ -10,7 +10,7 @@ class ObservationRepository:
     """
     Repository responsible for persistence and retrieval of Observation entities.
 
-    This class provides an interface to the `observations` table using 
+    This class provides an interface to the `observations` table using
     SQLAlchemy 2.0 with managed session lifecycle.
     """
 

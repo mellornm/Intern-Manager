@@ -58,7 +58,7 @@ def main():
     myappid = "mycompany.internmanager.pro.2026"
     if sys.platform == "win32":
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    
+
     app = QApplication(sys.argv)
 
     print("\n=== SYSTEM STARTUP (SQLAlchemy 2.0) ===\n")
@@ -70,7 +70,9 @@ def main():
         print("   -> Database ready\n")
     except Exception as e:
         print(f"CRITICAL ERROR: Failed to initialize database. Details: {e}\n")
-        QMessageBox.critical(None, "Erro Fatal", f"Falha ao inicializar banco de dados:\n{e}")
+        QMessageBox.critical(
+            None, "Erro Fatal", f"Falha ao inicializar banco de dados:\n{e}"
+        )
         return
 
     print("INITIALIZING SERVICES")
@@ -101,14 +103,16 @@ def main():
             venue_service=v_service,
             document_service=d_service,
         )
-        
+
         # ExportService now uses SQLAlchemy engine
         export_service = ExportService()
-        
+
         print("   -> Services initialized successfully\n")
     except Exception as e:
         print(f"CRITICAL ERROR: Failed to initialize services. Details: {e}\n")
-        QMessageBox.critical(None, "Erro Fatal", f"Falha ao carregar componentes do sistema:\n{e}")
+        QMessageBox.critical(
+            None, "Erro Fatal", f"Falha ao carregar componentes do sistema:\n{e}"
+        )
         return
 
     # Populate the database with default evaluation criteria if it's a fresh setup.

@@ -67,7 +67,7 @@ class VisitService(BaseService[Visit]):
         except Exception as e:
             print(f"Aviso: Não foi possível deletar a imagem {filename}: {e}")
 
-    def get_visits_by_intern(self, intern_id: int):
+    def get_by_intern_id(self, intern_id: int):
         return self.repo.get_by_intern_id(intern_id)
 
     def save_photo(

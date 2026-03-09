@@ -165,7 +165,7 @@ class ReportDialog(QDialog):
         intern_id = self.intern.intern_id
 
         # 1. Notas
-        grades = self.grade_service.get_grades_by_intern(intern_id)
+        grades = self.grade_service.get_by_intern_id(intern_id)
         if grades:
             avg = sum(g.value for g in grades)
             self.lbl_grades.setText(
@@ -177,7 +177,7 @@ class ReportDialog(QDialog):
             self.lbl_grades.setStyleSheet(f"color: {COLORS['warning']};")
 
         # 2. Documentos
-        docs = self.doc_service.get_documents_by_intern(intern_id)
+        docs = self.doc_service.get_by_intern_id(intern_id)
         # CORREÇÃO DE LÓGICA: Considera pendente tudo que não for "Aprovado"
         pending = sum(1 for d in docs if d.status != "Aprovado")
 
@@ -189,7 +189,7 @@ class ReportDialog(QDialog):
             self.lbl_docs.setStyleSheet(f"color: {COLORS['success']};")
 
         # 3. Meetings
-        meetings = self.meeting_service.get_meetings_by_intern(intern_id)
+        meetings = self.meeting_service.get_by_intern_id(intern_id)
         self.lbl_meetings.setText(f"📅 {len(meetings)} Registros de supervisão")
 
     def generate_report(self):
@@ -229,10 +229,10 @@ class ReportDialog(QDialog):
                 venue = self.venue_service.get_by_id(self.intern.venue_id)
 
             all_criteria = self.criteria_service.list_active_criteria()
-            grades = self.grade_service.get_grades_by_intern(intern_id)
-            documents = self.doc_service.get_documents_by_intern(intern_id)
-            meetings = self.meeting_service.get_meetings_by_intern(intern_id)
-            observations = self.obs_service.get_observations_by_intern(intern_id)
+            grades = self.grade_service.get_by_intern_id(intern_id)
+            documents = self.doc_service.get_by_intern_id(intern_id)
+            meetings = self.meeting_service.get_by_intern_id(intern_id)
+            observations = self.obs_service.get_by_intern_id(intern_id)
 
             self.progress.setValue(70)
 

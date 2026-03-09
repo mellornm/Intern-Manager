@@ -61,7 +61,7 @@ class DocumentService(BaseService[Document]):
     def delete_document(self, document: Document):
         return self.delete(document, "document")
 
-    def get_documents_by_intern(self, intern_id: int):
+    def get_by_intern_id(self, intern_id: int):
         return self.repo.get_by_intern_id(intern_id)
 
     def get_document_by_id(self, doc_id: int):
@@ -82,7 +82,7 @@ class DocumentService(BaseService[Document]):
 
     def count_total_pending(self) -> int:
         """
-        Calculates the total number of documents across all interns 
+        Calculates the total number of documents across all interns
         that are not in 'Aprovado' status.
         """
         return self.repo.count_pending()

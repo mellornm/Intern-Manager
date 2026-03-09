@@ -294,12 +294,28 @@ class InternDialog(QDialog):
                 self.date_end.setDate(d)
 
     def save_data(self):
-        if not self.txt_name.text().strip():
+        from utils.validations import validate_email_format
+
+        name = self.txt_name.text().strip()
+        ra = self.txt_ra.text().strip()
+        email = self.txt_email.text().strip()
+
+        if not name:
             QMessageBox.warning(self, "Erro", "Nome é obrigatório.")
+            self.txt_name.setFocus()
             return
-        if not self.txt_ra.text().strip():
+        if not ra:
             QMessageBox.warning(self, "Erro", "RA é obrigatório.")
+            self.txt_ra.setFocus()
             return
+
+        if email:
+            try:
+                validate_email_format(email)
+            except ValueError as e:
+                QMessageBox.warning(self, "E-mail Inválido", str(e))
+                self.txt_email.setFocus()
+                return
 
         s_str = self.date_start.date().toString("dd/MM/yyyy")
         e_str = self.date_end.date().toString("dd/MM/yyyy")

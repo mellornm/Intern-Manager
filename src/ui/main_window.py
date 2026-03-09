@@ -2,29 +2,32 @@
 Main window and user interface for the Intern Manager application.
 """
 
+import qtawesome as qta
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QIcon, QPalette
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
     QAbstractItemView,
-    QLineEdit,
-    QFrame,
-    QMessageBox,
     QFileDialog,
-    QStackedWidget,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMainWindow,
     QMenu,
+    QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPalette, QIcon
-import qtawesome as qta
+
+# Config
+from config import RESOURCES_DIR
 
 # Models & Services
 from services.document_service import DocumentService
@@ -38,6 +41,11 @@ from services.report_service import ReportService
 from services.venue_service import VenueService
 from services.visit_service import VisitService
 
+# Styles and Components
+from ui.criteria_view import CriteriaView
+from ui.dashboard_view import DashboardView
+from ui.delegates import StatusDelegate
+
 # Dialogs
 from ui.dialogs.batch_meeting_dialog import BatchMeetingDialog
 from ui.dialogs.document_dialog import DocumentDialog
@@ -48,17 +56,8 @@ from ui.dialogs.observation_dialog import ObservationDialog
 from ui.dialogs.report_dialog import ReportDialog
 from ui.dialogs.settings_dialog import SettingsDialog
 from ui.dialogs.visit_dialog import VisitDialog
-
-
-# Styles and Components
-from ui.criteria_view import CriteriaView
-from ui.dashboard_view import DashboardView
-from ui.delegates import StatusDelegate
 from ui.styles import COLORS
 from ui.venue_view import VenueView
-
-# Config
-from config import RESOURCES_DIR
 
 
 class MainWindow(QMainWindow):
@@ -197,7 +196,7 @@ class MainWindow(QMainWindow):
         app_title.setStyleSheet(
             "font-size: 20px; font-weight: 900; padding: 30px 20px 5px 20px; letter-spacing: 1px;"
         )
-        app_subtitle = QLabel("versão 1.2.3")
+        app_subtitle = QLabel("versão 2.0.0")
         app_subtitle.setStyleSheet(
             f"font-size: 12px; font-weight: normal; color: {COLORS['secondary']}; padding: 0 20px 30px 20px;"
         )

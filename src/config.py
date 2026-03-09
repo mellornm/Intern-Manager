@@ -23,8 +23,8 @@ Attributes:
     DB_PATH (Path): The full path to the SQLite database file (`interns.db`).
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 
@@ -82,5 +82,5 @@ DB_PATH = DB_DIR / "interns.db"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 # Version
-VERSION = "1.2.3"
+VERSION = "2.0.0"
 REPO_URL = "https://api.github.com/repos/vonroderik/Intern-Manager/releases/latest"

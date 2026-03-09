@@ -1,6 +1,6 @@
 # Intern Manager Pro
 
-[![Release](https://img.shields.io/badge/Release-v1.2.3-005A9E?style=flat-square)](https://github.com/vonroderik/Intern-Manager/releases)
+[![Release](https://img.shields.io/badge/Release-v2.0.0-005A9E?style=flat-square)](https://github.com/vonroderik/Intern-Manager/releases)
 [![Platform](https://img.shields.io/badge/Platform-Windows_|_macOS-gray?style=flat-square)](https://github.com/vonroderik/Intern-Manager)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](https://github.com/vonroderik/Intern-Manager/blob/main/LICENSE)
 
@@ -21,7 +21,7 @@ Módulo responsável pelo cadastro e manutenção dos dados dos estagiários.
 * Associação com supervisores e locais de estágio (Venues).
 * Histórico completo de alterações.
 
-### 2. Módulo de Visitas Técnicas (Novo na v1.2.3)
+### 2. Módulo de Visitas Técnicas (Novo na v2.0.0)
 Ferramenta de auditoria para supervisores de campo. Permite o registro detalhado das visitas realizadas in-loco.
 
 * **Registro de Evidências:** Upload e armazenamento seguro de fotos das visitas.
@@ -62,13 +62,13 @@ O sistema é distribuído como uma aplicação *standalone*, não necessitando d
 
 A aplicação foi construída utilizando tecnologias modernas e robustas para garantir performance e manutenibilidade a longo prazo.
 
-| Componente | Tecnologia | Função |
-| :--- | :--- | :--- |
-| **Linguagem** | Python 3.12 | Core da aplicação. |
-| **Interface** | PySide6 (Qt) | GUI nativa e responsiva. |
-| **Database** | SQLite 3 | Armazenamento local e relacional. |
-| **Relatórios** | ReportLab | Engine de geração de PDF. |
-| **Análise** | Matplotlib | Renderização de gráficos e métricas. |
+| Componente     | Tecnologia   | Função                               |
+| :------------- | :----------- | :----------------------------------- |
+| **Linguagem**  | Python 3.12  | Core da aplicação.                   |
+| **Interface**  | PySide6 (Qt) | GUI nativa e responsiva.             |
+| **Database**   | SQLite 3     | Armazenamento local e relacional.    |
+| **Relatórios** | ReportLab    | Engine de geração de PDF.            |
+| **Análise**    | Matplotlib   | Renderização de gráficos e métricas. |
 
 ---
 

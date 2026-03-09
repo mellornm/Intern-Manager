@@ -129,7 +129,7 @@ class InternRepository:
         """Counts interns that are not allocated to any venue."""
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(func.count(Intern.intern_id)).where(Intern.venue_id is None)  # type: ignore
+            stmt = select(func.count(Intern.intern_id)).where(Intern.venue_id == None)
             return session.scalar(stmt) or 0
         finally:
             if self._session is None:

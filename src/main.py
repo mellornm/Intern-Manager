@@ -6,6 +6,7 @@ service layer, and user interface using SQLAlchemy 2.0.
 """
 
 import sys
+import logging
 import ctypes
 from pathlib import Path
 from typing import Optional
@@ -44,6 +45,8 @@ from services.visit_service import VisitService
 
 # Utils
 from utils.seeder import seed_default_criteria
+from services.migration_service import MigrationService
+
 
 # Config
 from config import DB_DIR
@@ -59,7 +62,21 @@ def main():
     if sys.platform == "win32":
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
     app = QApplication(sys.argv)
+
+    try:
+        MigrationService.run_auto_migration()
+    except Exception as e:
+        QMessageBox.critical(
+            None,
+            "Database Error",
+            f"Failed to migrate database: {str(e)}\n The app will close to prevent dat loss.",
+        )
 
     print("\n=== SYSTEM STARTUP (SQLAlchemy 2.0) ===\n")
 

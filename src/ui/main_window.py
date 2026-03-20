@@ -19,12 +19,15 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QProgressDialog,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
+
+from typing import Optional
 
 # Config
 from config import RESOURCES_DIR
@@ -48,6 +51,7 @@ from ui.dashboard_view import DashboardView
 from ui.delegates import StatusDelegate
 
 # Dialogs
+from ui.dialogs.batch_document_dialog import BatchDocumentDialog
 from ui.dialogs.batch_meeting_dialog import BatchMeetingDialog
 from ui.dialogs.document_dialog import DocumentDialog
 from ui.dialogs.grade_dialog import GradeDialog
@@ -59,6 +63,7 @@ from ui.dialogs.settings_dialog import SettingsDialog
 from ui.dialogs.visit_dialog import VisitDialog
 from ui.styles import COLORS
 from ui.venue_view import VenueView
+from services.batch_report_worker import BatchReportWorker
 
 
 class MainWindow(QMainWindow):
@@ -77,7 +82,7 @@ class MainWindow(QMainWindow):
         report_service: ReportService,
         import_service: ImportService,
         export_service=None,
-        communication_service: CommunicationService = None,
+        communication_service: Optional[CommunicationService] = None,
     ):
         """Initializes services, window properties, and the main UI."""
         super().__init__()
@@ -323,12 +328,16 @@ class MainWindow(QMainWindow):
 
         # 1.1 Filter Status Label and Clear Button
         self.lbl_filter_status = QLabel("")
-        self.lbl_filter_status.setStyleSheet(f"color: {COLORS['primary']}; font-weight: bold; margin-left: 10px;")
+        self.lbl_filter_status.setStyleSheet(
+            f"color: {COLORS['primary']}; font-weight: bold; margin-left: 10px;"
+        )
         self.lbl_filter_status.setVisible(False)
         actions.addWidget(self.lbl_filter_status)
 
         self.btn_clear_filters = QPushButton(" Limpar Filtros")
-        self.btn_clear_filters.setIcon(qta.icon("fa5s.times-circle", color=COLORS["danger"]))
+        self.btn_clear_filters.setIcon(
+            qta.icon("fa5s.times-circle", color=COLORS["danger"])
+        )
         self.btn_clear_filters.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_clear_filters.setStyleSheet(f"""
             QPushButton {{ background-color: #F8D7DA; color: {COLORS["danger"]}; border: 1px solid #F5C6CB; padding: 8px 15px; border-radius: 6px; font-weight: 600; margin-left: 5px; }}
@@ -456,9 +465,13 @@ class MainWindow(QMainWindow):
 
         # Pre-fetch IDs for efficient filtering
         pending_ids = self.doc_service.repo.get_intern_ids_with_pending_docs(
-            self.current_doc_type if self.current_filter_mode == "pending_docs" else None
+            self.current_doc_type
+            if self.current_filter_mode == "pending_docs"
+            else None
         )
-        meeting_ids = self.meeting_service.repo.get_intern_ids_with_meetings_this_month()
+        meeting_ids = (
+            self.meeting_service.repo.get_intern_ids_with_meetings_this_month()
+        )
 
         self.table.setRowCount(0)
         for row, intern in enumerate(interns):
@@ -472,12 +485,16 @@ class MainWindow(QMainWindow):
             font = name_item.font()
             font.setBold(True)
             name_item.setFont(font)
-            
+
             # Store metadata for filtering without re-querying
-            name_item.setData(Qt.ItemDataRole.UserRole + 1, intern.intern_id in pending_ids)
-            name_item.setData(Qt.ItemDataRole.UserRole + 2, intern.intern_id in meeting_ids)
+            name_item.setData(
+                Qt.ItemDataRole.UserRole + 1, intern.intern_id in pending_ids
+            )
+            name_item.setData(
+                Qt.ItemDataRole.UserRole + 2, intern.intern_id in meeting_ids
+            )
             name_item.setData(Qt.ItemDataRole.UserRole + 3, intern.venue_id is None)
-            
+
             self.table.setItem(row, 1, name_item)
 
             self.table.setItem(
@@ -499,29 +516,32 @@ class MainWindow(QMainWindow):
 
     def apply_filters(self):
         """
-        Centralized logic to filter the table based on search text and 
+        Centralized logic to filter the table based on search text and
         the active dashboard category.
         """
         search = self.txt_search.text().lower().strip()
-        
+
         # Update UI feedback for active filters
         is_filtered = self.current_filter_mode != "all"
         self.btn_clear_filters.setVisible(is_filtered)
         self.lbl_filter_status.setVisible(is_filtered)
-        
+
         if is_filtered:
             labels = {
                 "no_venue": "Filtrando: Sem Local de Estágio",
                 "pending_docs": f"Filtrando: Documento Pendente ({self.current_doc_type})",
-                "meetings": "Filtrando: Reuniões no Mês"
+                "meetings": "Filtrando: Reuniões no Mês",
             }
             self.lbl_filter_status.setText(labels.get(self.current_filter_mode, ""))
 
         for row in range(self.table.rowCount()):
             show_row = True
-            
+
             # 1. Apply Category Filter (from Dashboard)
             name_item = self.table.item(row, 1)
+            if not name_item:
+                continue
+
             if self.current_filter_mode == "no_venue":
                 if not name_item.data(Qt.ItemDataRole.UserRole + 3):
                     show_row = False
@@ -531,7 +551,7 @@ class MainWindow(QMainWindow):
             elif self.current_filter_mode == "meetings":
                 if not name_item.data(Qt.ItemDataRole.UserRole + 2):
                     show_row = False
-            
+
             # 2. Apply Text Search (if row still visible)
             if show_row and search:
                 match = False
@@ -541,7 +561,7 @@ class MainWindow(QMainWindow):
                         match = True
                         break
                 show_row = match
-                
+
             self.table.setRowHidden(row, not show_row)
 
     def reset_filters(self):
@@ -617,10 +637,17 @@ class MainWindow(QMainWindow):
         if not i:
             return
         if not i.phone:
-            QMessageBox.warning(self, "Atenção", f"O aluno {i.name} não possui telefone cadastrado.")
+            QMessageBox.warning(
+                self, "Atenção", f"O aluno {i.name} não possui telefone cadastrado."
+            )
             return
-        
-        self.comm_service.open_whatsapp(i.phone, f"Olá {i.name}, tudo bem? Sou seu supervisor de estágio.")
+
+        if self.comm_service:
+            self.comm_service.open_whatsapp(
+                i.phone, f"Olá {i.name}, tudo bem? Sou seu supervisor de estágio."
+            )
+        else:
+            QMessageBox.critical(self, "Erro", "Serviço de comunicação não disponível.")
 
     def send_email(self):
         """Triggers the Email communication service for the selected intern."""
@@ -628,10 +655,15 @@ class MainWindow(QMainWindow):
         if not i:
             return
         if not i.email:
-            QMessageBox.warning(self, "Atenção", f"O aluno {i.name} não possui e-mail cadastrado.")
+            QMessageBox.warning(
+                self, "Atenção", f"O aluno {i.name} não possui e-mail cadastrado."
+            )
             return
-        
-        self.comm_service.open_email(i.email, "Assunto: Acompanhamento de Estágio")
+
+        if self.comm_service:
+            self.comm_service.open_email(i.email, "Assunto: Acompanhamento de Estágio")
+        else:
+            QMessageBox.critical(self, "Erro", "Serviço de comunicação não disponível.")
 
     def delete_intern(self):
         """Deletes the selected intern after a confirmation dialog."""
@@ -762,15 +794,15 @@ class MainWindow(QMainWindow):
 
     def handle_dashboard_filter(self, card_id: str):
         """
-        Switches to the Interns page and applies a specific filter based on 
+        Switches to the Interns page and applies a specific filter based on
         the KPI card clicked in the dashboard.
         """
         # Switch to Interns page (Index 1)
         self.sidebar_list.setCurrentRow(1)
-        
+
         # Set the filter mode
         self.current_filter_mode = card_id
-        
+
         # If filtering by docs, capture the current doc type from dashboard combo
         if card_id == "pending_docs":
             self.current_doc_type = self.page_dashboard.combo_doc_filter.currentText()
@@ -779,7 +811,7 @@ class MainWindow(QMainWindow):
 
         # Clear search text to avoid conflicting filters
         self.txt_search.clear()
-        
+
         # Reload data to pre-calculate the specific IDs for the chosen filter
         self.load_data()
 
@@ -800,7 +832,7 @@ class MainWindow(QMainWindow):
 
         count = len(selection)
 
-        # --- CENÁRIO 1: MÚLTIPLOS ALUNOS ---
+        # --- MULTIPLE INTERNS ---
         if count > 1:
             lbl_info = menu.addAction(f"  {count} Alunos Selecionados")
             lbl_info.setEnabled(False)
@@ -815,7 +847,27 @@ class MainWindow(QMainWindow):
                 lambda: self.export_batch_photos_action(selection)
             )
 
-        # --- CENÁRIO 2: UM ALUNO SÓ (Comportamento Original) ---
+            # Ação em Lote: Exportar Relatórios PDF
+            act_export_reports = menu.addAction(
+                qta.icon("fa5s.file-pdf", color="#D0021B"),
+                f"  Exportar Relatórios PDF ({count})",
+            )
+            act_export_reports.triggered.connect(
+                lambda: self.export_batch_reports_action(selection)
+            )
+
+            menu.addSeparator()
+
+            # Ação em Lote: Aprovação de Documentos
+            act_batch_docs = menu.addAction(
+                qta.icon("fa5s.check-double", color="#27AE60"),
+                f"  Aprovar Documento em Lote ({count})",
+            )
+            act_batch_docs.triggered.connect(
+                lambda: self.approve_batch_documents_action(selection)
+            )
+
+        # --- SINGLE INTERN ---
         else:
             # Garante que a linha clicada é a selecionada visualmente
             item = self.table.itemAt(pos)
@@ -925,3 +977,113 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Falha na exportação: {e}")
+
+    def export_batch_reports_action(self, selected_rows):
+        """
+        Orchestrates the background generation of multiple PDF reports.
+        """
+        # 1. Collect IDs
+        intern_ids = []
+        for index in selected_rows:
+            item_id = self.table.item(index.row(), 0)
+            if item_id:
+                intern_ids.append(int(item_id.text()))
+
+        if not intern_ids:
+            return
+
+        # 2. Get target folder
+        folder = QFileDialog.getExistingDirectory(
+            self, "Selecionar Pasta para os Relatórios"
+        )
+        if not folder:
+            return
+
+        # 3. Setup Progress Dialog
+        total = len(intern_ids)
+        progress = QProgressDialog(
+            "Iniciando exportação...", "Cancelar", 0, total, self
+        )
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setWindowTitle("Exportação em Massa")
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+
+        # 4. Setup Worker
+        services = {
+            "intern": self.service,
+            "venue": self.venue_service,
+            "criteria": self.criteria_service,
+            "grade": self.grade_service,
+            "document": self.doc_service,
+            "meeting": self.meeting_service,
+            "observation": self.obs_service,
+            "visit": self.visit_service,
+            "report": self.report_service,
+        }
+
+        self.report_worker = BatchReportWorker(folder, intern_ids, services)
+
+        # Connect signals
+        self.report_worker.progress_changed.connect(
+            lambda count, name: progress.setLabelText(
+                f"Gerando relatório ({count}/{total}):\n{name}"
+            )
+        )
+        self.report_worker.progress_changed.connect(
+            lambda count, name: progress.setValue(count)
+        )
+
+        progress.canceled.connect(self.report_worker.stop)
+
+        def on_finished(success, total):
+            progress.close()
+            QMessageBox.information(
+                self,
+                "Exportação Concluída",
+                f"Processo finalizado com sucesso!\n\nRelatórios gerados: {success} de {total}",
+            )
+
+        def on_error(err_msg):
+            progress.close()
+            QMessageBox.critical(
+                self, "Erro na Exportação", f"Ocorreu um erro crítico:\n{err_msg}"
+            )
+
+        self.report_worker.finished.connect(on_finished)
+        self.report_worker.error_occurred.connect(on_error)
+
+        # 5. Start
+        self.report_worker.start()
+
+    def approve_batch_documents_action(self, selected_rows):
+        """
+        Handles batch approval of documents for multiple selected interns.
+        """
+        intern_ids = []
+        for index in selected_rows:
+            item_id = self.table.item(index.row(), 0)
+            if item_id:
+                intern_ids.append(int(item_id.text()))
+
+        if not intern_ids:
+            return
+
+        d = BatchDocumentDialog(self, len(intern_ids))
+        if d.exec():
+            doc_name = d.get_selected_document()
+            try:
+                updated = self.doc_service.approve_batch_documents(intern_ids, doc_name)
+
+                # Update dashboard (since counts changed)
+                self.page_dashboard.refresh_data()
+                # Reload current table to update marks
+                self.load_data()
+
+                QMessageBox.information(
+                    self,
+                    "Sucesso",
+                    f"Documento '{doc_name}' aprovado para {updated} alunos.",
+                )
+            except Exception as e:
+                QMessageBox.critical(self, "Erro", f"Falha na aprovação coletiva: {e}")

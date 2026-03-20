@@ -86,3 +86,11 @@ class DocumentService(BaseService[Document]):
         that are not in 'Aprovado' status.
         """
         return self.repo.count_pending()
+
+    def approve_batch_documents(self, intern_ids: list[int], document_name: str) -> int:
+        """
+        Approves a specific document type for a list of interns.
+        """
+        if not intern_ids:
+            return 0
+        return self.repo.approve_batch(intern_ids, document_name)

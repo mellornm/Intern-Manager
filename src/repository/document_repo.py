@@ -102,6 +102,29 @@ class DocumentRepository:
         with db_manager.session_scope() as session:
             session.add_all(documents)
 
+    def approve_batch(self, intern_ids: List[int], document_name: str) -> int:
+        """
+        Sets the status of a specific document to 'Aprovado' for multiple interns.
+        Returns the number of rows updated.
+        """
+        from sqlalchemy import update
+        
+        if self._session:
+            stmt = update(Document).where(
+                Document.intern_id.in_(intern_ids),
+                Document.document_name == document_name
+            ).values(status="Aprovado")
+            result = self._session.execute(stmt)
+            return result.rowcount
+
+        with db_manager.session_scope() as session:
+            stmt = update(Document).where(
+                Document.intern_id.in_(intern_ids),
+                Document.document_name == document_name
+            ).values(status="Aprovado")
+            result = session.execute(stmt)
+            return result.rowcount
+
     def count_pending(self) -> int:
         """
         Counts the total number of documents that are not in 'Aprovado' status.

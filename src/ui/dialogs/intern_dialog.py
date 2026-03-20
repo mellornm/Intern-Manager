@@ -142,6 +142,8 @@ class InternDialog(QDialog):
         self.txt_name = QLineEdit()
         self.txt_ra = QLineEdit()
         self.txt_email = QLineEdit()
+        self.txt_phone = QLineEdit()
+        self.txt_phone.setPlaceholderText("Ex: 11999998888")
 
         # Venue
         self.combo_venue = QComboBox()
@@ -198,6 +200,7 @@ class InternDialog(QDialog):
         form_layout.addRow(lbl("Nome Completo *:"), self.txt_name)
         form_layout.addRow(lbl("RA (Matrícula) *:"), self.txt_ra)
         form_layout.addRow(lbl("E-mail:"), self.txt_email)
+        form_layout.addRow(lbl("WhatsApp/Telefone:"), self.txt_phone)
         form_layout.addRow(lbl("Local de Estágio:"), venue_layout)
         form_layout.addRow(lbl("Semestre:"), self.combo_term)
         form_layout.addRow(lbl("Horários:"), hours_layout)
@@ -269,6 +272,7 @@ class InternDialog(QDialog):
         self.txt_name.setText(str(self.intern.name or ""))
         self.txt_ra.setText(str(self.intern.registration_number or ""))
         self.txt_email.setText(self.intern.email or "")
+        self.txt_phone.setText(self.intern.phone or "")
         self.combo_term.setCurrentText(self.intern.term)
 
         # Carregamento correto dos novos campos
@@ -335,6 +339,7 @@ class InternDialog(QDialog):
             name=self.txt_name.text().strip(),
             registration_number=self.txt_ra.text().strip(),
             email=self.txt_email.text().strip(),
+            phone=self.txt_phone.text().strip() or None,
             venue_id=self.combo_venue.currentData(),
             term=self.combo_term.currentText(),
             start_date=self.date_start.date().toString("yyyy-MM-dd"),

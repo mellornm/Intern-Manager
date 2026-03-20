@@ -69,6 +69,15 @@ class StatusDelegate(QStyledItemDelegate):
         font.setBold(True)
         font.setPointSize(9)
         painter.setFont(font)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(text))
+        
+        # Check if the intern is near the deadline using the custom role
+        is_near_deadline = index.data(Qt.ItemDataRole.UserRole)
+        
+        display_text = str(text)
+        if is_near_deadline:
+            # Add a warning icon/symbol if the deadline is approaching
+            display_text = f"⚠️ {display_text}"
+            
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, display_text)
 
         painter.restore()

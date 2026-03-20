@@ -40,6 +40,7 @@ from services.observation_service import ObservationService
 from services.report_service import ReportService
 from services.venue_service import VenueService
 from services.visit_service import VisitService
+from services.communication_service import CommunicationService
 
 # Styles and Components
 from ui.criteria_view import CriteriaView
@@ -76,6 +77,7 @@ class MainWindow(QMainWindow):
         report_service: ReportService,
         import_service: ImportService,
         export_service=None,
+        communication_service: CommunicationService = None,
     ):
         """Initializes services, window properties, and the main UI."""
         super().__init__()
@@ -90,6 +92,7 @@ class MainWindow(QMainWindow):
         self.import_service = import_service
         self.export_service = export_service
         self.visit_service = visit_service
+        self.comm_service = communication_service
 
         self.setWindowTitle("InternManager Pro 2026")
         self.setMinimumSize(1280, 800)
@@ -159,6 +162,7 @@ class MainWindow(QMainWindow):
         self.page_dashboard = DashboardView(
             self.service, self.doc_service, self.meeting_service, self.venue_service
         )
+        self.page_dashboard.filter_requested.connect(self.handle_dashboard_filter)
         self.content_stack.addWidget(self.page_dashboard)
 
         # Page 1: Interns List
@@ -167,7 +171,7 @@ class MainWindow(QMainWindow):
         self.content_stack.addWidget(self.page_list)
 
         # Page 2: Venues
-        self.page_venues = VenueView(self.venue_service)
+        self.page_venues = VenueView(self.venue_service, self.comm_service)
         self.content_stack.addWidget(self.page_venues)
 
         # Page 3: Criteria
@@ -397,6 +401,8 @@ class MainWindow(QMainWindow):
             return b
 
         layout.addWidget(make_btn("Editar", "fa5s.pen", self.open_edit_dialog))
+        layout.addWidget(make_btn("WhatsApp", "fa5b.whatsapp", self.send_whatsapp))
+        layout.addWidget(make_btn("E-mail", "fa5s.envelope", self.send_email))
         layout.addWidget(make_btn("Notas", "fa5s.star", self.open_grades_dialog))
         layout.addWidget(make_btn("Relatório", "fa5s.file-pdf", self.open_report))
         layout.addWidget(
@@ -446,7 +452,9 @@ class MainWindow(QMainWindow):
             self.table.setItem(
                 row, 3, QTableWidgetItem(str(intern.registration_number or "-"))
             )
-            self.table.setItem(row, 4, QTableWidgetItem(intern.status))
+            status_item = QTableWidgetItem(intern.status)
+            status_item.setData(Qt.ItemDataRole.UserRole, intern.is_near_deadline)
+            self.table.setItem(row, 4, status_item)
 
         # Re-apply filter if it exists
         if self.txt_search.text():
@@ -513,6 +521,7 @@ class MainWindow(QMainWindow):
                 i.venue_id = data.venue_id
                 i.registration_number = data.registration_number
                 i.email = data.email
+                i.phone = data.phone
                 i.term = data.term
                 i.start_date = data.start_date
                 i.end_date = data.end_date
@@ -523,6 +532,28 @@ class MainWindow(QMainWindow):
                 self.load_data()
             except Exception as e:
                 QMessageBox.warning(self, "Erro", str(e))
+
+    def send_whatsapp(self):
+        """Triggers the WhatsApp communication service for the selected intern."""
+        i = self.get_selected_intern()
+        if not i:
+            return
+        if not i.phone:
+            QMessageBox.warning(self, "Atenção", f"O aluno {i.name} não possui telefone cadastrado.")
+            return
+        
+        self.comm_service.open_whatsapp(i.phone, f"Olá {i.name}, tudo bem? Sou seu supervisor de estágio.")
+
+    def send_email(self):
+        """Triggers the Email communication service for the selected intern."""
+        i = self.get_selected_intern()
+        if not i:
+            return
+        if not i.email:
+            QMessageBox.warning(self, "Atenção", f"O aluno {i.name} não possui e-mail cadastrado.")
+            return
+        
+        self.comm_service.open_email(i.email, "Assunto: Acompanhamento de Estágio")
 
     def delete_intern(self):
         """Deletes the selected intern after a confirmation dialog."""
@@ -651,6 +682,28 @@ class MainWindow(QMainWindow):
             elif row == 3:  # Criteria
                 self.page_criteria.refresh_data()
 
+    def handle_dashboard_filter(self, card_id: str):
+        """
+        Switches to the Interns page and applies a specific filter based on 
+        the KPI card clicked in the dashboard.
+        """
+        # Switch to Interns page (Index 1)
+        self.sidebar_list.setCurrentRow(1)
+        
+        if card_id == "no_venue":
+            # Filter interns without venue
+            self.txt_search.setText("-") # Search for '-' in venue column
+            # More specific filtering could be done here if needed
+        elif card_id == "pending_docs":
+            # For now, we clear search and let user see all
+            # A real filter for pending docs would require more UI work
+            self.txt_search.clear()
+        elif card_id == "total":
+            self.txt_search.clear()
+        
+        # Trigger data reload with the new filter
+        self.load_data()
+
     def _open_context_menu(self, pos):
         # 1. Pega os itens selecionados
         selection = self.table.selectionModel().selectedRows()
@@ -694,6 +747,16 @@ class MainWindow(QMainWindow):
                 qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Cadastro"
             )
             act_edit.triggered.connect(self.open_edit_dialog)
+
+            act_wa = menu.addAction(
+                qta.icon("fa5b.whatsapp", color="#25D366"), "  Enviar WhatsApp"
+            )
+            act_wa.triggered.connect(self.send_whatsapp)
+
+            act_mail = menu.addAction(
+                qta.icon("fa5s.envelope", color="#EA4335"), "  Enviar E-mail"
+            )
+            act_mail.triggered.connect(self.send_email)
 
             menu.addSeparator()
 

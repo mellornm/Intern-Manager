@@ -22,21 +22,23 @@ class Meeting(Base):
     # Primary key
     meeting_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    # Core meeting fields
-    meeting_date: Mapped[str] = mapped_column(String, nullable=False)
-    meeting_topic: Mapped[str] = mapped_column(
-        String, server_default="General Follow-up", nullable=False
-    )
-
-    # Boolean stored as Integer (0 or 1) in SQLite
-    is_intern_present: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    # Foreign key relationship to the intern
+    # Foreign key relationship to the intern (matches legacy order)
     intern_id: Mapped[int] = mapped_column(
         ForeignKey("interns.intern_id", ondelete="CASCADE"), nullable=False
     )
 
+    # Core meeting fields
+    meeting_date: Mapped[str] = mapped_column(String, nullable=False)
+    
+    # Boolean stored as Integer (0 or 1) in SQLite
+    is_intern_present: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    # Added field (at the end for safer migration)
+    meeting_topic: Mapped[str] = mapped_column(
+        String, server_default="General Follow-up", nullable=False
+    )
+
     # Relationship to the Intern model
-    # Uses a string reference to avoid circular imports during runtime
     intern: Mapped["Intern"] = relationship("Intern", back_populates="meetings")
 
     def __repr__(self) -> str:

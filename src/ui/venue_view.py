@@ -9,9 +9,10 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QMessageBox,
     QLabel,
+    QMenu,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QPalette, QCursor
 import qtawesome as qta
 
 from ui.styles import COLORS
@@ -26,15 +27,17 @@ class VenueView(QWidget):
     to add, edit, and delete them through a dialog interface.
     """
 
-    def __init__(self, service):
+    def __init__(self, service, comm_service=None):
         """
         Initializes the VenueView.
 
         Args:
             service: The venue service instance for database operations.
+            comm_service: The communication service instance.
         """
         super().__init__()
         self.service = service
+        self.comm_service = comm_service
         self._setup_ui()
         self.refresh_data()
 
@@ -90,6 +93,10 @@ class VenueView(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.setRowHeight(0, 50)
 
+        # Context Menu
+        self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._open_context_menu)
+
         self.table.doubleClicked.connect(self.edit_venue)
         layout.addWidget(self.table)
 
@@ -105,6 +112,22 @@ class VenueView(QWidget):
         """)
         self.btn_edit.clicked.connect(self.edit_venue)
 
+        self.btn_wa = QPushButton(" WhatsApp")
+        self.btn_wa.setIcon(qta.icon("fa5b.whatsapp", color="#25D366"))
+        self.btn_wa.setStyleSheet(f"""
+            QPushButton {{ background: transparent; border: 1px solid {COLORS["border"]}; padding: 8px 15px; border-radius: 4px; color: {COLORS["dark"]}; font-weight: 600; }}
+            QPushButton:hover {{ background-color: {COLORS["light"]}; }}
+        """)
+        self.btn_wa.clicked.connect(self.send_whatsapp)
+
+        self.btn_mail = QPushButton(" E-mail")
+        self.btn_mail.setIcon(qta.icon("fa5s.envelope", color="#EA4335"))
+        self.btn_mail.setStyleSheet(f"""
+            QPushButton {{ background: transparent; border: 1px solid {COLORS["border"]}; padding: 8px 15px; border-radius: 4px; color: {COLORS["dark"]}; font-weight: 600; }}
+            QPushButton:hover {{ background-color: {COLORS["light"]}; }}
+        """)
+        self.btn_mail.clicked.connect(self.send_email)
+
         self.btn_del = QPushButton(" Excluir")
         self.btn_del.setIcon(qta.icon("fa5s.trash-alt", color=COLORS["danger"]))
         self.btn_del.setStyleSheet(f"""
@@ -114,8 +137,46 @@ class VenueView(QWidget):
         self.btn_del.clicked.connect(self.delete_venue)
 
         actions_layout.addWidget(self.btn_edit)
+        actions_layout.addWidget(self.btn_wa)
+        actions_layout.addWidget(self.btn_mail)
         actions_layout.addWidget(self.btn_del)
         layout.addLayout(actions_layout)
+
+    def _open_context_menu(self, pos):
+        """Displays a context menu for the selected venue."""
+        item = self.table.itemAt(pos)
+        if not item:
+            return
+
+        self.table.selectRow(item.row())
+        v = self.get_selected()
+        if not v:
+            return
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{ background-color: {COLORS["white"]}; border: 1px solid {COLORS["border"]}; border-radius: 6px; padding: 5px; }}
+            QMenu::item {{ padding: 8px 25px; border-radius: 4px; color: {COLORS["dark"]}; font-weight: 500; }}
+            QMenu::item:selected {{ background-color: {COLORS["light"]}; color: {COLORS["primary"]}; }}
+            QMenu::separator {{ height: 1px; background: {COLORS["border"]}; margin: 5px 10px; }}
+        """)
+
+        act_edit = menu.addAction(qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Local")
+        act_edit.triggered.connect(self.edit_venue)
+
+        act_wa = menu.addAction(qta.icon("fa5b.whatsapp", color="#25D366"), "  Enviar WhatsApp")
+        act_wa.triggered.connect(self.send_whatsapp)
+
+        act_mail = menu.addAction(qta.icon("fa5s.envelope", color="#EA4335"), "  Enviar E-mail")
+        act_mail.triggered.connect(self.send_email)
+
+        menu.addSeparator()
+
+        act_del = menu.addAction(qta.icon("fa5s.trash-alt", color=COLORS["danger"]), "  Excluir Local")
+        act_del.triggered.connect(self.delete_venue)
+
+        # Use global mouse position for the context menu
+        menu.exec(QCursor.pos())
 
     def refresh_data(self):
         """Fetches all venues from the service and repopulates the table."""
@@ -179,6 +240,28 @@ class VenueView(QWidget):
                 self.refresh_data()
             except Exception as e:
                 QMessageBox.critical(self, "Erro", str(e))
+
+    def send_whatsapp(self):
+        """Triggers the WhatsApp communication service for the selected venue's supervisor."""
+        v = self.get_selected()
+        if not v:
+            return
+        if not v.supervisor_phone:
+            QMessageBox.warning(self, "Atenção", f"O local '{v.venue_name}' não possui telefone de supervisor cadastrado.")
+            return
+        
+        self.comm_service.open_whatsapp(v.supervisor_phone, f"Olá {v.supervisor_name or ''}, sou o supervisor de estágio. Gostaria de tratar sobre os estagiários alocados no local '{v.venue_name}'.")
+
+    def send_email(self):
+        """Triggers the Email communication service for the selected venue's supervisor."""
+        v = self.get_selected()
+        if not v:
+            return
+        if not v.supervisor_email:
+            QMessageBox.warning(self, "Atenção", f"O local '{v.venue_name}' não possui e-mail de supervisor cadastrado.")
+            return
+        
+        self.comm_service.open_email(v.supervisor_email, f"Assunto: Acompanhamento de Estágio - {v.venue_name}")
 
     def delete_venue(self):
         """Deletes the selected venue after a confirmation dialog."""

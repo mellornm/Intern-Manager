@@ -35,12 +35,18 @@ class Intern(Base):
         String, unique=True, nullable=False
     )
     email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Internship period and scheduling
     start_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     end_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     working_days: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     working_hours: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # Foreign key relationship to the venue (matches legacy order)
+    venue_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("venues.venue_id"), nullable=True
+    )
 
     # Academic classification
     term: Mapped[str] = mapped_column(String, nullable=False)
@@ -50,11 +56,6 @@ class Intern(Base):
         String,
         server_default=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
         onupdate=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
-    )
-
-    # Foreign key relationship to the venue
-    venue_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("venues.venue_id"), nullable=True
     )
 
     # Relationships to other models
@@ -101,6 +102,36 @@ class Intern(Base):
                 return "Concluído"
         except (ValueError, TypeError):
             return "Erro de Data"
+
+    @property
+    def days_remaining(self) -> Optional[int]:
+        """
+        Calculates the number of days left until the internship expires.
+        
+        Returns:
+            Optional[int]: The number of days remaining, or None if end_date is missing.
+        """
+        if not self.end_date:
+            return None
+        try:
+            today = datetime.now().date()
+            end = datetime.strptime(self.end_date, "%Y-%m-%d").date()
+            delta = (end - today).days
+            return delta
+        except (ValueError, TypeError):
+            return None
+
+    @property
+    def is_near_deadline(self) -> bool:
+        """
+        Checks if the internship is within 15 days of its end date.
+        
+        Returns:
+            bool: True if the status is 'Ativo' and the deadline is <= 15 days away.
+        """
+        days = self.days_remaining
+        # We only flag active interns who are nearing their completion date
+        return days is not None and 0 <= days <= 15 and self.status == "Ativo"
 
     @property
     def formatted_start_date(self) -> str:

@@ -41,6 +41,7 @@ from services.report_service import ReportService
 from services.update_service import check_for_updates
 from services.venue_service import VenueService
 from services.visit_service import VisitService
+from services.communication_service import CommunicationService
 
 
 # Utils
@@ -114,6 +115,7 @@ def main():
         criteria_service = EvaluationCriteriaService(repo_criteria)
         grade_service = GradeService(repo=repo_grade, criteria_repo=repo_criteria)
         report_service = ReportService()
+        comm_service = CommunicationService()
 
         imp_service = ImportService(
             intern_service=i_service,
@@ -173,6 +175,7 @@ def main():
         report_service=report_service,
         import_service=imp_service,
         export_service=export_service,
+        communication_service=comm_service,
     )
 
     window.show()

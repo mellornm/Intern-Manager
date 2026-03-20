@@ -29,7 +29,6 @@ class DatabaseManager:
         if self._initialized:
             return
 
-        # Windows paths usually need 3 slashes for absolute local files
         db_url = f"sqlite:///{DB_PATH}"
 
         self.engine = create_engine(
@@ -40,8 +39,6 @@ class DatabaseManager:
             bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False
         )
 
-        # Scoped session is our safety net since the UI runs on a single thread
-        # but might trigger background tasks later.
         self.SessionLocal = scoped_session(session_factory)
 
         self._setup_listeners()
@@ -56,9 +53,9 @@ class DatabaseManager:
         @event.listens_for(Engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
-            # If we don't enable this, FKs are just fancy strings to SQLite
+
             cursor.execute("PRAGMA foreign_keys=ON")
-            # WAL mode is a must for Windows to prevent 'database is locked'
+
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
@@ -81,7 +78,6 @@ class DatabaseManager:
             session.rollback()
             raise
         finally:
-            # For scoped_session, remove() clears the registry and closes the session
             self.SessionLocal.remove()
 
     def create_tables(self):

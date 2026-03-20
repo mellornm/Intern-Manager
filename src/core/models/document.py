@@ -22,6 +22,11 @@ class Document(Base):
     # Primary key
     document_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
+    # Foreign key relationship to the intern (matches legacy order)
+    intern_id: Mapped[int] = mapped_column(
+        ForeignKey("interns.intern_id", ondelete="CASCADE"), nullable=False
+    )
+
     # Core document fields
     document_name: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, server_default="Pendente")
@@ -34,13 +39,7 @@ class Document(Base):
         onupdate=func.strftime("%Y-%m-%d %H:%M:%S", "now", "localtime"),
     )
 
-    # Foreign key relationship to the intern
-    intern_id: Mapped[int] = mapped_column(
-        ForeignKey("interns.intern_id", ondelete="CASCADE"), nullable=False
-    )
-
     # Relationship to the Intern model
-    # Uses a string reference to avoid circular imports during runtime
     intern: Mapped["Intern"] = relationship("Intern", back_populates="documents")
 
     def __repr__(self) -> str:

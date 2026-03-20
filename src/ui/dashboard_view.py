@@ -17,8 +17,25 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
+from PySide6.QtCore import QSize, Qt, Signal
 from ui.styles import COLORS
+
+
+class ClickableCard(QFrame):
+    """
+    A custom QFrame that emits a signal when clicked, mimicking a button.
+    """
+    clicked = Signal(str)
+
+    def __init__(self, card_id: str, parent=None):
+        super().__init__(parent)
+        self.card_id = card_id
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self.card_id)
+        super().mousePressEvent(event)
 
 
 class ChartWidget(QFrame):
@@ -43,6 +60,7 @@ class DashboardView(QWidget):
     visualizes data through Matplotlib charts for a quick overview of
     the internship program's status.
     """
+    filter_requested = Signal(str)
 
     def __init__(self, intern_service, doc_service, meeting_service, venue_service):
         """
@@ -104,16 +122,16 @@ class DashboardView(QWidget):
         layout.addLayout(self.cards_container)
 
         self.card_total = self._create_card_widget(
-            "Total Alunos", "fa5s.user-graduate", COLORS["primary"]
+            "Total Alunos", "fa5s.user-graduate", COLORS["primary"], "total"
         )
         self.card_no_venue = self._create_card_widget(
-            "Sem Local", "fa5s.map-marker-alt", COLORS["danger"]
+            "Sem Local", "fa5s.map-marker-alt", COLORS["danger"], "no_venue"
         )
         self.card_pending = self._create_card_widget(
-            "Documentos Pendentes", "fa5s.file-contract", COLORS["warning"]
+            "Documentos Pendentes", "fa5s.file-contract", COLORS["warning"], "pending_docs"
         )
         self.card_meetings = self._create_card_widget(
-            "Reuniões (Mês)", "fa5s.calendar-check", COLORS["success"]
+            "Reuniões (Mês)", "fa5s.calendar-check", COLORS["success"], "meetings"
         )
 
         self.cards_container.addWidget(self.card_total)
@@ -181,22 +199,26 @@ class DashboardView(QWidget):
         charts_layout.addWidget(doc_container)
         layout.addLayout(charts_layout, stretch=1)
 
-    def _create_card_widget(self, title: str, icon_name: str, color_hex: str) -> QFrame:
+    def _create_card_widget(self, title: str, icon_name: str, color_hex: str, card_id: str = "") -> ClickableCard:
         """
-        Creates a styled QFrame to be used as a KPI card.
+        Creates a styled ClickableCard to be used as a KPI metric.
 
         Args:
             title: The text to display below the value.
             icon_name: The Font Awesome icon identifier.
             color_hex: The hex color for the icon.
+            card_id: Unique identifier for the card, used for filtering signals.
 
         Returns:
-            A configured QFrame ready to be added to the layout.
+            A configured ClickableCard ready to be added to the layout.
         """
-        frame = QFrame()
+        frame = ClickableCard(card_id)
         frame.setStyleSheet(
-            f"QFrame {{ background-color: {COLORS['white']}; border-radius: 12px; border: 1px solid {COLORS['border']}; }}"
+            f"ClickableCard {{ background-color: {COLORS['white']}; border-radius: 12px; border: 1px solid {COLORS['border']}; }}"
         )
+        # Connect the internal click signal to the dashboard's external signal
+        frame.clicked.connect(self.filter_requested.emit)
+        
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(20)
         shadow.setColor(QColor(0, 0, 0, 30))

@@ -16,6 +16,14 @@ if src_dir not in sys.path:
 
 # Now we can safely import project modules
 from core.models.base import Base  # noqa: E402
+from core.models.intern import Intern  # noqa: E402
+from core.models.venue import Venue  # noqa: E402
+from core.models.document import Document  # noqa: E402
+from core.models.grade import Grade  # noqa: E402
+from core.models.meeting import Meeting  # noqa: E402
+from core.models.observation import Observation  # noqa: E402
+from core.models.visit import Visit  # noqa: E402
+from core.models.evaluation_criteria import EvaluationCriteria  # noqa: E402
 from config import DB_PATH  # noqa: E402
 
 # this is the Alembic Config object, which provides
@@ -53,6 +61,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -73,7 +82,9 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, target_metadata=target_metadata, render_as_batch=True
+        )
 
         with context.begin_transaction():
             context.run_migrations()

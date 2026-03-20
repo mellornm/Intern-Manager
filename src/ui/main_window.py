@@ -48,7 +48,7 @@ from services.communication_service import CommunicationService
 # Styles and Components
 from ui.criteria_view import CriteriaView
 from ui.dashboard_view import DashboardView
-from ui.delegates import StatusDelegate
+from ui.delegates import StatusDelegate, ProgressBarDelegate
 
 # Dialogs
 from ui.dialogs.batch_document_dialog import BatchDocumentDialog
@@ -369,9 +369,9 @@ class MainWindow(QMainWindow):
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor(COLORS["dark"]))
         self.table.setPalette(palette)
 
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "Nome Completo", "Local de Estágio", "RA", "Status"]
+            ["ID", "Nome Completo", "Local de Estágio", "RA", "Status", "Progresso"]
         )
         self.table.setColumnHidden(0, True)  # Hide internal ID
 
@@ -381,6 +381,11 @@ class MainWindow(QMainWindow):
         self.table.horizontalHeader().setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
         )
+        self.table.horizontalHeader().setSectionResizeMode(
+            5, QHeaderView.ResizeMode.Interactive
+        )
+        self.table.setColumnWidth(5, 150)
+
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -393,8 +398,9 @@ class MainWindow(QMainWindow):
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
 
-        # Use a custom delegate to render the 'Status' column
+        # Use custom delegates
         self.table.setItemDelegateForColumn(4, StatusDelegate(self.table))
+        self.table.setItemDelegateForColumn(5, ProgressBarDelegate(self.table))
         self.table.doubleClicked.connect(self.open_edit_dialog)
 
         layout.addWidget(self.table)
@@ -506,6 +512,10 @@ class MainWindow(QMainWindow):
             status_item = QTableWidgetItem(intern.status)
             status_item.setData(Qt.ItemDataRole.UserRole, intern.is_near_deadline)
             self.table.setItem(row, 4, status_item)
+
+            # Column 5: Time Progress Bar
+            progress_item = QTableWidgetItem(str(intern.time_progress_percent))
+            self.table.setItem(row, 5, progress_item)
 
         # Re-apply filters
         self.apply_filters()

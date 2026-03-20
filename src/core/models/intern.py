@@ -134,6 +134,37 @@ class Intern(Base):
         return days is not None and 0 <= days <= 15 and self.status == "Ativo"
 
     @property
+    def time_progress_percent(self) -> int:
+        """
+        Calculates the percentage of time elapsed for the internship period.
+        
+        Returns:
+            int: Percentage (0-100) based on current date relative to start and end dates.
+        """
+        if not self.start_date or not self.end_date:
+            return 0
+            
+        try:
+            today = datetime.now().date()
+            start = datetime.strptime(self.start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(self.end_date, "%Y-%m-%d").date()
+            
+            if today < start:
+                return 0
+            if today > end:
+                return 100
+            
+            total_duration = (end - start).days
+            if total_duration <= 0:
+                return 100
+                
+            days_passed = (today - start).days
+            percent = int((days_passed / total_duration) * 100)
+            return max(0, min(100, percent))
+        except (ValueError, TypeError):
+            return 0
+
+    @property
     def formatted_start_date(self) -> str:
         """Returns the start date in BR format (DD/MM/YYYY)."""
         return format_date_to_br(self.start_date) or "-"

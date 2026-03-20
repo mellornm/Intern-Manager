@@ -144,3 +144,17 @@ class MeetingRepository:
         finally:
             if self._session is None:
                 db_manager.SessionLocal.remove()
+
+    def get_meetings_in_range(self, start_date: str, end_date: str) -> List[Meeting]:
+        """
+        Retrieves all meetings within a specific date range (ISO format).
+        """
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Meeting).where(
+                Meeting.meeting_date.between(start_date, end_date)
+            ).order_by(Meeting.meeting_date.asc())
+            return list(session.scalars(stmt).all())
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()

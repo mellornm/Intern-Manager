@@ -1,4 +1,6 @@
-from typing import Any
+import calendar
+from datetime import date
+from typing import Any, List
 
 from core.models.meeting import Meeting
 from repository.meeting_repo import MeetingRepository
@@ -82,3 +84,19 @@ class MeetingService(BaseService[Meeting]):
             bool: True if the deletion was successful, False otherwise.
         """
         return super().delete(data_or_id, "meeting")
+
+    def get_calendar_events(self, month: int, year: int) -> List[Meeting]:
+        """
+        Retrieves all meetings for a specific month and year.
+
+        Args:
+            month (int): The month (1-12).
+            year (int): The year (e.g., 2024).
+
+        Returns:
+            List[Meeting]: Meetings within the specified month range.
+        """
+        _, last_day = calendar.monthrange(year, month)
+        start_date = date(year, month, 1).isoformat()
+        end_date = date(year, month, last_day).isoformat()
+        return self.repo.get_meetings_in_range(start_date, end_date)

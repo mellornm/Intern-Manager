@@ -48,6 +48,7 @@ from services.communication_service import CommunicationService
 # Styles and Components
 from ui.criteria_view import CriteriaView
 from ui.dashboard_view import DashboardView
+from ui.calendar_view import CalendarView
 from ui.delegates import StatusDelegate, ProgressBarDelegate
 
 # Dialogs
@@ -186,6 +187,10 @@ class MainWindow(QMainWindow):
         self.page_criteria = CriteriaView(self.criteria_service)
         self.content_stack.addWidget(self.page_criteria)
 
+        # Page 4: Calendar
+        self.page_calendar = CalendarView()
+        self.content_stack.addWidget(self.page_calendar)
+
         # Connect sidebar navigation to page switching
         self.sidebar_list.currentRowChanged.connect(self.on_sidebar_changed)
         self.sidebar_list.setCurrentRow(0)
@@ -252,6 +257,9 @@ class MainWindow(QMainWindow):
         )
         self.sidebar_list.addItem(
             QListWidgetItem(qta.icon("fa5s.tasks", color="white"), "  Critérios")
+        )
+        self.sidebar_list.addItem(
+            QListWidgetItem(qta.icon("fa5s.calendar-alt", color="white"), "  Calendário")
         )
 
         slayout.addWidget(self.sidebar_list)
@@ -881,6 +889,8 @@ class MainWindow(QMainWindow):
                 self.page_venues.refresh_data()
             elif row == 3:  # Criteria
                 self.page_criteria.refresh_data()
+            elif row == 4:  # Calendar
+                self.page_calendar._load_month_data()
 
     def handle_dashboard_filter(self, card_id: str):
         """

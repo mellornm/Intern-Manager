@@ -1,6 +1,9 @@
+import calendar
 import shutil
 import uuid
+from datetime import date
 from pathlib import Path
+from typing import List
 
 
 from repository.visit_repo import VisitRepository
@@ -134,3 +137,19 @@ class VisitService(BaseService[Visit]):
                     count_errors += 1
 
         return count_success, count_errors
+
+    def get_calendar_events(self, month: int, year: int) -> List[Visit]:
+        """
+        Retrieves all visits for a specific month and year.
+
+        Args:
+            month (int): The month (1-12).
+            year (int): The year (e.g., 2024).
+
+        Returns:
+            List[Visit]: Visits within the specified month range.
+        """
+        _, last_day = calendar.monthrange(year, month)
+        start_date = date(year, month, 1).isoformat()
+        end_date = date(year, month, last_day).isoformat()
+        return self.repo.get_visits_in_range(start_date, end_date)

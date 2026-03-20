@@ -411,51 +411,131 @@ class MainWindow(QMainWindow):
     def _setup_action_panel(self, parent_layout):
         """Creates the bottom panel with actions for the selected intern."""
         container = QFrame()
-        container.setStyleSheet(
-            f"background-color: {COLORS['white']}; border-radius: 8px; border: 1px solid {COLORS['border']};"
-        )
+        container.setStyleSheet(f"""
+            QFrame {{ background-color: {COLORS["white"]}; border-radius: 8px; border: 1px solid {COLORS["border"]}; }}
+            QMenu {{ background-color: white; border: 1px solid {COLORS["border"]}; padding: 5px; }}
+            QMenu::item {{ padding: 8px 25px; border-radius: 4px; color: {COLORS["dark"]}; }}
+            QMenu::item:selected {{ background-color: {COLORS["light"]}; color: {COLORS["primary"]}; }}
+        """)
         layout = QHBoxLayout(container)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setContentsMargins(15, 10, 15, 10)
         layout.setSpacing(10)
 
-        lbl = QLabel("Ações:")
-        lbl.setStyleSheet(
-            f"font-weight: bold; color: {COLORS['medium']}; margin-right: 10px;"
-        )
-        layout.addWidget(lbl)
-
         # Helper to create styled action buttons
-        def make_btn(text, icon, func):
+        def make_btn(text, icon, func, primary=False):
             b = QPushButton(text)
-            b.setIcon(qta.icon(icon, color=COLORS["dark"]))
+            b.setIcon(
+                qta.icon(icon, color=COLORS["white"] if primary else COLORS["dark"])
+            )
             b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setStyleSheet(f"""
-                QPushButton {{ background-color: transparent; border: 1px solid {COLORS["border"]}; padding: 8px 15px; border-radius: 4px; color: {COLORS["dark"]}; font-weight: 600; }}
-                QPushButton:hover {{ background-color: {COLORS["light"]}; border-color: {COLORS["medium"]}; }}
-            """)
+
+            if primary:
+                style = f"""
+                    QPushButton {{ background-color: {COLORS["primary"]}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; }}
+                    QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
+                """
+            else:
+                style = f"""
+                    QPushButton {{ background-color: transparent; border: 1px solid {COLORS["border"]}; padding: 10px 15px; border-radius: 6px; color: {COLORS["dark"]}; font-weight: 600; }}
+                    QPushButton:hover {{ background-color: {COLORS["light"]}; border-color: {COLORS["medium"]}; }}
+                """
+            b.setStyleSheet(style)
             b.clicked.connect(func)
             return b
 
+        # 1. Primary Actions (Icon + Text)
         layout.addWidget(make_btn("Editar", "fa5s.pen", self.open_edit_dialog))
-        layout.addWidget(make_btn("WhatsApp", "fa5b.whatsapp", self.send_whatsapp))
-        layout.addWidget(make_btn("E-mail", "fa5s.envelope", self.send_email))
-        layout.addWidget(make_btn("Notas", "fa5s.star", self.open_grades_dialog))
         layout.addWidget(make_btn("Relatório", "fa5s.file-pdf", self.open_report))
-        layout.addWidget(
-            make_btn("Documentos", "fa5s.folder-open", self.open_documents)
+
+        # 2. Communication Group (Icon Only)
+        comm_group = QHBoxLayout()
+        comm_group.setSpacing(5)
+
+        btn_wa = QPushButton()
+        btn_wa.setIcon(qta.icon("fa5b.whatsapp", color="#25D366"))
+        btn_wa.setFixedSize(40, 40)
+        btn_wa.setToolTip("Enviar WhatsApp")
+        btn_wa.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_wa.setStyleSheet(
+            f"QPushButton {{ border: 1px solid {COLORS['border']}; border-radius: 6px; background: white; }} QPushButton:hover {{ background: {COLORS['light']}; }}"
         )
-        layout.addWidget(make_btn("Reuniões", "fa5s.calendar-alt", self.open_meetings))
-        layout.addWidget(make_btn("Visitas", "fa5s.map-marked-alt", self.open_visits))
-        layout.addWidget(make_btn("Observações", "fa5s.eye", self.open_observations))
+        btn_wa.clicked.connect(self.send_whatsapp)
+
+        btn_mail = QPushButton()
+        btn_mail.setIcon(qta.icon("fa5s.envelope", color="#EA4335"))
+        btn_mail.setFixedSize(40, 40)
+        btn_mail.setToolTip("Enviar E-mail")
+        btn_mail.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_mail.setStyleSheet(
+            f"QPushButton {{ border: 1px solid {COLORS['border']}; border-radius: 6px; background: white; }} QPushButton:hover {{ background: {COLORS['light']}; }}"
+        )
+        btn_mail.clicked.connect(self.send_email)
+
+        comm_group.addWidget(btn_wa)
+        comm_group.addWidget(btn_mail)
+        layout.addLayout(comm_group)
+
+        # 3. Dropdown Menu (Registrar...)
+        self.btn_registrar = QPushButton(" Registrar...")
+        self.btn_registrar.setIcon(qta.icon("fa5s.plus", color=COLORS["dark"]))
+        self.btn_registrar.setStyleSheet(f"""
+            QPushButton {{ background-color: {COLORS["white"]}; border: 1px solid {COLORS["border"]}; padding: 10px 20px; border-radius: 6px; color: {COLORS["dark"]}; font-weight: bold; }}
+            QPushButton:hover {{ background-color: {COLORS["light"]}; }}
+            QPushButton::menu-indicator {{ image: none; }} /* Hides the small arrow if desired, or let it show default */
+        """)
+        self.btn_registrar.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # Create Menu for the button
+        self.action_menu = QMenu(self)
+        self.action_menu.addAction(
+            qta.icon("fa5s.star", color="#F5A623"),
+            "Lançar Notas",
+            self.open_grades_dialog,
+        )
+        self.action_menu.addAction(
+            qta.icon("fa5s.folder-open", color="#4A90E2"),
+            "Documentos",
+            self.open_documents,
+        )
+        self.action_menu.addAction(
+            qta.icon("fa5s.calendar-alt", color="#50E3C2"),
+            "Supervisão (Reunião)",
+            self.open_meetings,
+        )
+        self.action_menu.addAction(
+            qta.icon("fa5s.map-marked-alt", color="#E91E63"),
+            "Visita Técnica",
+            self.open_visits,
+        )
+        self.action_menu.addAction(
+            qta.icon("fa5s.eye", color="#9013FE"), "Observação", self.open_observations
+        )
+
+        self.btn_registrar.setMenu(self.action_menu)
+        layout.addWidget(self.btn_registrar)
 
         layout.addStretch()
 
-        btn_del = QPushButton(" Excluir Aluno")
-        btn_del.setIcon(qta.icon("fa5s.trash-alt", color=COLORS["danger"]))
+        # 4. Delete Action (Icon Only, isolated at the right)
+        btn_del = QPushButton()
+        btn_del.setIcon(
+            qta.icon("fa5s.trash-alt", color=COLORS["danger"], scale_factor=0.8)
+        )
+        btn_del.setToolTip("Excluir Aluno")
         btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_del.setStyleSheet(f"""
-            QPushButton {{ background-color: transparent; border: 1px solid #F5C6CB; padding: 8px 15px; border-radius: 4px; color: {COLORS["danger"]}; font-weight: 600; }}
-            QPushButton:hover {{ background-color: #F8D7DA; }}
+        btn_del.setStyleSheet("""
+            QPushButton {{ 
+                background-color: transparent; 
+                border: 1px solid #F5C6CB; 
+                border-radius: 6px; 
+                padding: 8px;
+                min-width: 40px;
+                min-height: 40px;
+            }}
+            QPushButton:hover {{ 
+                background-color: #F8D7DA; 
+                border-color: #F1B0B7; 
+            }}
         """)
         btn_del.clicked.connect(self.delete_intern)
         layout.addWidget(btn_del)

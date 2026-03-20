@@ -94,6 +94,9 @@ class MainWindow(QMainWindow):
         self.visit_service = visit_service
         self.comm_service = communication_service
 
+        self.current_filter_mode = "all"
+        self.current_doc_type = "Todos"
+
         self.setWindowTitle("InternManager Pro 2026")
         self.setMinimumSize(1280, 800)
         icon_path = RESOURCES_DIR / "app_icon.ico"
@@ -317,6 +320,24 @@ class MainWindow(QMainWindow):
         """)
         self.txt_search.textChanged.connect(self.filter_table)
         actions.addWidget(self.txt_search)
+
+        # 1.1 Filter Status Label and Clear Button
+        self.lbl_filter_status = QLabel("")
+        self.lbl_filter_status.setStyleSheet(f"color: {COLORS['primary']}; font-weight: bold; margin-left: 10px;")
+        self.lbl_filter_status.setVisible(False)
+        actions.addWidget(self.lbl_filter_status)
+
+        self.btn_clear_filters = QPushButton(" Limpar Filtros")
+        self.btn_clear_filters.setIcon(qta.icon("fa5s.times-circle", color=COLORS["danger"]))
+        self.btn_clear_filters.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_filters.setStyleSheet(f"""
+            QPushButton {{ background-color: #F8D7DA; color: {COLORS["danger"]}; border: 1px solid #F5C6CB; padding: 8px 15px; border-radius: 6px; font-weight: 600; margin-left: 5px; }}
+            QPushButton:hover {{ background-color: #f1b0b7; }}
+        """)
+        self.btn_clear_filters.clicked.connect(self.reset_filters)
+        self.btn_clear_filters.setVisible(False)
+        actions.addWidget(self.btn_clear_filters)
+
         actions.addStretch()
 
         btn_import = QPushButton(" Importar Planilha")
@@ -428,22 +449,35 @@ class MainWindow(QMainWindow):
 
     # --- DATA LOGIC ---
     def load_data(self):
-        """Fetches all interns and populates the main table."""
+        """Fetches all interns and populates the main table with filter metadata."""
         interns = self.service.get_all_interns()
         all_venues = self.venue_service.get_all()
         venue_map = {v.venue_id: v.venue_name for v in all_venues}
+
+        # Pre-fetch IDs for efficient filtering
+        pending_ids = self.doc_service.repo.get_intern_ids_with_pending_docs(
+            self.current_doc_type if self.current_filter_mode == "pending_docs" else None
+        )
+        meeting_ids = self.meeting_service.repo.get_intern_ids_with_meetings_this_month()
 
         self.table.setRowCount(0)
         for row, intern in enumerate(interns):
             self.table.insertRow(row)
             self.table.setRowHeight(row, 50)
 
-            self.table.setItem(row, 0, QTableWidgetItem(str(intern.intern_id)))
+            id_item = QTableWidgetItem(str(intern.intern_id))
+            self.table.setItem(row, 0, id_item)
 
             name_item = QTableWidgetItem(intern.name)
             font = name_item.font()
             font.setBold(True)
             name_item.setFont(font)
+            
+            # Store metadata for filtering without re-querying
+            name_item.setData(Qt.ItemDataRole.UserRole + 1, intern.intern_id in pending_ids)
+            name_item.setData(Qt.ItemDataRole.UserRole + 2, intern.intern_id in meeting_ids)
+            name_item.setData(Qt.ItemDataRole.UserRole + 3, intern.venue_id is None)
+            
             self.table.setItem(row, 1, name_item)
 
             self.table.setItem(
@@ -456,22 +490,66 @@ class MainWindow(QMainWindow):
             status_item.setData(Qt.ItemDataRole.UserRole, intern.is_near_deadline)
             self.table.setItem(row, 4, status_item)
 
-        # Re-apply filter if it exists
-        if self.txt_search.text():
-            self.filter_table(self.txt_search.text())
+        # Re-apply filters
+        self.apply_filters()
 
     def filter_table(self, text):
-        """Hides or shows table rows based on the search text."""
-        search = text.lower().strip()
+        """Hides or shows table rows based on the current search and filter state."""
+        self.apply_filters()
+
+    def apply_filters(self):
+        """
+        Centralized logic to filter the table based on search text and 
+        the active dashboard category.
+        """
+        search = self.txt_search.text().lower().strip()
+        
+        # Update UI feedback for active filters
+        is_filtered = self.current_filter_mode != "all"
+        self.btn_clear_filters.setVisible(is_filtered)
+        self.lbl_filter_status.setVisible(is_filtered)
+        
+        if is_filtered:
+            labels = {
+                "no_venue": "Filtrando: Sem Local de Estágio",
+                "pending_docs": f"Filtrando: Documento Pendente ({self.current_doc_type})",
+                "meetings": "Filtrando: Reuniões no Mês"
+            }
+            self.lbl_filter_status.setText(labels.get(self.current_filter_mode, ""))
+
         for row in range(self.table.rowCount()):
-            match = False
-            # Search name, venue, and registration number columns
-            for col in [1, 2, 3]:
-                item = self.table.item(row, col)
-                if item and search in item.text().lower():
-                    match = True
-                    break
-            self.table.setRowHidden(row, not match)
+            show_row = True
+            
+            # 1. Apply Category Filter (from Dashboard)
+            name_item = self.table.item(row, 1)
+            if self.current_filter_mode == "no_venue":
+                if not name_item.data(Qt.ItemDataRole.UserRole + 3):
+                    show_row = False
+            elif self.current_filter_mode == "pending_docs":
+                if not name_item.data(Qt.ItemDataRole.UserRole + 1):
+                    show_row = False
+            elif self.current_filter_mode == "meetings":
+                if not name_item.data(Qt.ItemDataRole.UserRole + 2):
+                    show_row = False
+            
+            # 2. Apply Text Search (if row still visible)
+            if show_row and search:
+                match = False
+                for col in [1, 2, 3]:
+                    item = self.table.item(row, col)
+                    if item and search in item.text().lower():
+                        match = True
+                        break
+                show_row = match
+                
+            self.table.setRowHidden(row, not show_row)
+
+    def reset_filters(self):
+        """Clears all dashboard-initiated filters and returns to 'all' mode."""
+        self.current_filter_mode = "all"
+        self.current_doc_type = "Todos"
+        self.txt_search.clear()
+        self.load_data()
 
     def get_selected_intern(self):
         """
@@ -690,18 +768,19 @@ class MainWindow(QMainWindow):
         # Switch to Interns page (Index 1)
         self.sidebar_list.setCurrentRow(1)
         
-        if card_id == "no_venue":
-            # Filter interns without venue
-            self.txt_search.setText("-") # Search for '-' in venue column
-            # More specific filtering could be done here if needed
-        elif card_id == "pending_docs":
-            # For now, we clear search and let user see all
-            # A real filter for pending docs would require more UI work
-            self.txt_search.clear()
-        elif card_id == "total":
-            self.txt_search.clear()
+        # Set the filter mode
+        self.current_filter_mode = card_id
         
-        # Trigger data reload with the new filter
+        # If filtering by docs, capture the current doc type from dashboard combo
+        if card_id == "pending_docs":
+            self.current_doc_type = self.page_dashboard.combo_doc_filter.currentText()
+        else:
+            self.current_doc_type = "Todos"
+
+        # Clear search text to avoid conflicting filters
+        self.txt_search.clear()
+        
+        # Reload data to pre-calculate the specific IDs for the chosen filter
         self.load_data()
 
     def _open_context_menu(self, pos):

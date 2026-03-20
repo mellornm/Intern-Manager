@@ -115,3 +115,21 @@ class DocumentRepository:
         finally:
             if self._session is None:
                 db_manager.SessionLocal.remove()
+
+    def get_intern_ids_with_pending_docs(self, document_name: Optional[str] = None) -> List[int]:
+        """
+        Identifies all interns who have at least one document that is not 'Aprovado'.
+        Can be filtered by a specific document name.
+        """
+        session = self._session or db_manager.get_session()
+        try:
+            stmt = select(Document.intern_id).where(Document.status != "Aprovado")
+            if document_name and document_name != "Todos":
+                stmt = stmt.where(Document.document_name.like(f"%{document_name}%"))
+            
+            # Use set to avoid duplicates and return as list
+            result = session.scalars(stmt).all()
+            return list(set(result))
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()

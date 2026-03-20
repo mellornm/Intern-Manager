@@ -311,7 +311,26 @@ class DashboardView(QWidget):
 
         total_interns = self.i_service.repo.count_total()
         no_venue_count = self.i_service.repo.count_without_venue()
-        total_pending_items = self.d_service.count_total_pending()
+        
+        # Capture current document filter text
+        filter_doc = self.combo_doc_filter.currentText()
+        
+        # Update card title to reflect filter
+        card_pending_title = self.card_pending.findChild(QLabel) # Finds the first label (the value)
+        # We need the second label for the title. Let's find it by object name or text
+        for lbl in self.card_pending.findChildren(QLabel):
+            if lbl.text().isupper() or "DOCUMENTOS" in lbl.text().upper():
+                title_text = "TODOS PENDENTES" if filter_doc == "Todos" else f"PENDENTES: {filter_doc.upper()}"
+                lbl.setText(title_text)
+
+        # Recalculate pending items based on the filter
+        if filter_doc == "Todos":
+            total_pending_items = self.d_service.count_total_pending()
+        else:
+            # Get IDs of interns with this specific pending doc
+            pending_ids = self.d_service.repo.get_intern_ids_with_pending_docs(filter_doc)
+            total_pending_items = len(pending_ids)
+
         meetings_month = self.m_service.repo.count_this_month()
 
         self._update_card_value(self.card_total, total_interns)
@@ -320,8 +339,6 @@ class DashboardView(QWidget):
         self._update_card_value(self.card_meetings, meetings_month)
 
         self._plot_venue_distribution(self.chart1_frame, total_interns, no_venue_count)
-
-        filter_doc = self.combo_doc_filter.currentText()
         self._plot_docs_filtered(filter_doc, interns)
 
     def _plot_venue_distribution(self, frame: ChartWidget, total: int, no_venue: int):

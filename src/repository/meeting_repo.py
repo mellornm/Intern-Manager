@@ -125,3 +125,22 @@ class MeetingRepository:
         finally:
             if self._session is None:
                 db_manager.SessionLocal.remove()
+
+    def get_intern_ids_with_meetings_this_month(self) -> List[int]:
+        """
+        Returns IDs of interns who participated in at least one meeting this month.
+        """
+        session = self._session or db_manager.get_session()
+        try:
+            current_month = func.strftime("%m", "now")
+            current_year = func.strftime("%Y", "now")
+
+            stmt = select(Meeting.intern_id).where(
+                func.strftime("%m", Meeting.meeting_date) == current_month,
+                func.strftime("%Y", Meeting.meeting_date) == current_year,
+            )
+            result = session.scalars(stmt).all()
+            return list(set(result))
+        finally:
+            if self._session is None:
+                db_manager.SessionLocal.remove()

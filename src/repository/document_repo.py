@@ -108,20 +108,28 @@ class DocumentRepository:
         Returns the number of rows updated.
         """
         from sqlalchemy import update
-        
+
         if self._session:
-            stmt = update(Document).where(
-                Document.intern_id.in_(intern_ids),
-                Document.document_name == document_name
-            ).values(status="Aprovado")
+            stmt = (
+                update(Document)
+                .where(
+                    Document.intern_id.in_(intern_ids),
+                    Document.document_name == document_name,
+                )
+                .values(status="Aprovado")
+            )
             result = self._session.execute(stmt)
             return result.rowcount
 
         with db_manager.session_scope() as session:
-            stmt = update(Document).where(
-                Document.intern_id.in_(intern_ids),
-                Document.document_name == document_name
-            ).values(status="Aprovado")
+            stmt = (
+                update(Document)
+                .where(
+                    Document.intern_id.in_(intern_ids),
+                    Document.document_name == document_name,
+                )
+                .values(status="Aprovado")
+            )
             result = session.execute(stmt)
             return result.rowcount
 
@@ -139,7 +147,9 @@ class DocumentRepository:
             if self._session is None:
                 db_manager.SessionLocal.remove()
 
-    def get_intern_ids_with_pending_docs(self, document_name: Optional[str] = None) -> List[int]:
+    def get_intern_ids_with_pending_docs(
+        self, document_name: Optional[str] = None
+    ) -> List[int]:
         """
         Identifies all interns who have at least one document that is not 'Aprovado'.
         Can be filtered by a specific document name.
@@ -149,7 +159,7 @@ class DocumentRepository:
             stmt = select(Document.intern_id).where(Document.status != "Aprovado")
             if document_name and document_name != "Todos":
                 stmt = stmt.where(Document.document_name.like(f"%{document_name}%"))
-            
+
             # Use set to avoid duplicates and return as list
             result = session.scalars(stmt).all()
             return list(set(result))

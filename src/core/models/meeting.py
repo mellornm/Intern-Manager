@@ -29,7 +29,7 @@ class Meeting(Base):
 
     # Core meeting fields
     meeting_date: Mapped[str] = mapped_column(String, nullable=False)
-    
+
     # Boolean stored as Integer (0 or 1) in SQLite
     is_intern_present: Mapped[bool] = mapped_column(Boolean, nullable=False)
 

@@ -107,7 +107,7 @@ class Intern(Base):
     def days_remaining(self) -> Optional[int]:
         """
         Calculates the number of days left until the internship expires.
-        
+
         Returns:
             Optional[int]: The number of days remaining, or None if end_date is missing.
         """
@@ -125,7 +125,7 @@ class Intern(Base):
     def is_near_deadline(self) -> bool:
         """
         Checks if the internship is within 15 days of its end date.
-        
+
         Returns:
             bool: True if the status is 'Ativo' and the deadline is <= 15 days away.
         """
@@ -137,27 +137,27 @@ class Intern(Base):
     def time_progress_percent(self) -> int:
         """
         Calculates the percentage of time elapsed for the internship period.
-        
+
         Returns:
             int: Percentage (0-100) based on current date relative to start and end dates.
         """
         if not self.start_date or not self.end_date:
             return 0
-            
+
         try:
             today = datetime.now().date()
             start = datetime.strptime(self.start_date, "%Y-%m-%d").date()
             end = datetime.strptime(self.end_date, "%Y-%m-%d").date()
-            
+
             if today < start:
                 return 0
             if today > end:
                 return 100
-            
+
             total_duration = (end - start).days
             if total_duration <= 0:
                 return 100
-                
+
             days_passed = (today - start).days
             percent = int((days_passed / total_duration) * 100)
             return max(0, min(100, percent))

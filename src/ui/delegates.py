@@ -69,15 +69,15 @@ class StatusDelegate(QStyledItemDelegate):
         font.setBold(True)
         font.setPointSize(9)
         painter.setFont(font)
-        
+
         # Check if the intern is near the deadline using the custom role
         is_near_deadline = index.data(Qt.ItemDataRole.UserRole)
-        
+
         display_text = str(text)
         if is_near_deadline:
             # Add a warning icon/symbol if the deadline is approaching
             display_text = f"⚠️ {display_text}"
-            
+
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, display_text)
 
         painter.restore()
@@ -86,7 +86,7 @@ class StatusDelegate(QStyledItemDelegate):
 class ProgressBarDelegate(QStyledItemDelegate):
     """
     A delegate that renders a progress bar inside a table cell.
-    
+
     Used to visualize time elapsed for an internship.
     """
 
@@ -111,29 +111,31 @@ class ProgressBarDelegate(QStyledItemDelegate):
         margin_h = 20
         margin_v = 15
         progress_rect = option.rect.adjusted(margin_h, margin_v, -margin_h, -margin_v)
-        
+
         # --- Background Track ---
         # Draw a slightly darker track for better white text contrast
         track_path = QPainterPath()
         track_path.addRoundedRect(progress_rect, 6, 6)
         painter.fillPath(track_path, QBrush(QColor("#BDBDBD")))
-        
+
         # --- Filled Progress ---
         # Calculate the width of the filled portion based on percentage
         if progress_val > 0:
             fill_width = int(progress_rect.width() * (progress_val / 100.0))
-            fill_rect = progress_rect.adjusted(0, 0, -(progress_rect.width() - fill_width), 0)
-            
+            fill_rect = progress_rect.adjusted(
+                0, 0, -(progress_rect.width() - fill_width), 0
+            )
+
             fill_path = QPainterPath()
             fill_path.addRoundedRect(fill_rect, 6, 6)
-            
+
             # Use dynamic colors: warning color if near the end
-            color = QColor(COLORS["primary"]) # Default blue
+            color = QColor(COLORS["primary"])  # Default blue
             if progress_val > 80:
-                color = QColor("#E67E22") # Stronger orange for better contrast
+                color = QColor("#E67E22")  # Stronger orange for better contrast
             if progress_val >= 99:
-                color = QColor(COLORS["success"]) # Success green
-                
+                color = QColor(COLORS["success"])  # Success green
+
             painter.fillPath(fill_path, QBrush(color))
 
         # --- Percentage Text ---
@@ -143,7 +145,7 @@ class ProgressBarDelegate(QStyledItemDelegate):
         font.setPointSize(9)
         font.setBold(True)
         painter.setFont(font)
-        
+
         text = f"{progress_val}%"
         painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, text)
 

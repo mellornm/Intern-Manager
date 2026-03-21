@@ -2,12 +2,14 @@ import os
 import traceback
 from PySide6.QtCore import QThread, Signal
 
+
 class BatchReportWorker(QThread):
     """
     Worker thread for generating multiple PDF reports in the background.
     """
+
     progress_changed = Signal(int, str)  # (current_count, current_name)
-    finished = Signal(int, int)          # (success_count, total_count)
+    finished = Signal(int, int)  # (success_count, total_count)
     error_occurred = Signal(str)
 
     def __init__(self, target_folder, selected_intern_ids, services):
@@ -58,7 +60,9 @@ class BatchReportWorker(QThread):
                 self.progress_changed.emit(i + 1, intern.name)
 
                 # 2. Collect all data for report
-                venue = v_service.get_by_id(intern.venue_id) if intern.venue_id else None
+                venue = (
+                    v_service.get_by_id(intern.venue_id) if intern.venue_id else None
+                )
                 criteria = c_service.list_active_criteria()
                 grades = g_service.get_by_intern_id(intern_id)
                 docs = d_service.get_by_intern_id(intern_id)
@@ -67,8 +71,16 @@ class BatchReportWorker(QThread):
                 visits = vi_service.get_by_intern_id(intern_id) if vi_service else []
 
                 # 3. Define safe filename
-                safe_name = "".join(c for c in intern.name if c.isalnum() or c in (" ", "_")).strip().replace(" ", "_")
-                ra_suffix = f"_{intern.registration_number}" if intern.registration_number else ""
+                safe_name = (
+                    "".join(c for c in intern.name if c.isalnum() or c in (" ", "_"))
+                    .strip()
+                    .replace(" ", "_")
+                )
+                ra_suffix = (
+                    f"_{intern.registration_number}"
+                    if intern.registration_number
+                    else ""
+                )
                 filename = f"Relatorio_{safe_name}{ra_suffix}.pdf"
                 filepath = os.path.join(self.target_folder, filename)
 
@@ -82,7 +94,7 @@ class BatchReportWorker(QThread):
                     docs,
                     meetings,
                     observations,
-                    visits
+                    visits,
                 )
 
                 success_count += 1

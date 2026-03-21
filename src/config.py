@@ -82,5 +82,5 @@ DB_PATH = DB_DIR / "interns.db"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 # Version
-VERSION = "2.1.0"
+VERSION = "2.0.0"
 REPO_URL = "https://api.github.com/repos/vonroderik/Intern-Manager/releases/latest"

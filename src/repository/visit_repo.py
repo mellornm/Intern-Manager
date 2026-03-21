@@ -113,9 +113,11 @@ class VisitRepository:
         """
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(Visit).where(
-                Visit.visit_date.between(start_date, end_date)
-            ).order_by(Visit.visit_date.asc())
+            stmt = (
+                select(Visit)
+                .where(Visit.visit_date.between(start_date, end_date))
+                .order_by(Visit.visit_date.asc())
+            )
             return list(session.scalars(stmt).all())
         finally:
             if self._session is None:

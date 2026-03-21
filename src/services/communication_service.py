@@ -9,7 +9,7 @@ from PySide6.QtCore import QUrl
 
 class CommunicationService:
     """
-    Handles external communication protocols by opening system-default 
+    Handles external communication protocols by opening system-default
     applications for messaging and email.
     """
 
@@ -34,7 +34,7 @@ class CommunicationService:
         # If it has 10 or 11 digits, we assume it's a Brazilian number without DDI
         if len(digits) in [10, 11]:
             return f"55{digits}"
-        
+
         return digits
 
     def open_whatsapp(self, phone: str, message: str = ""):
@@ -51,7 +51,7 @@ class CommunicationService:
 
         url_str = f"https://wa.me/{formatted_phone}"
         if message:
-            # QUrl.toPercentEncoding returns QByteArray. 
+            # QUrl.toPercentEncoding returns QByteArray.
             # We use .data() to get a buffer (memoryview) and convert to bytes for decoding.
             query_bytes = QUrl.toPercentEncoding(message).data()
             url_str += f"?text={bytes(query_bytes).decode('utf-8')}"
@@ -75,12 +75,12 @@ class CommunicationService:
         if subject:
             # Convert QByteArray data to bytes explicitly to satisfy Pylance and handle memoryview
             subject_bytes = QUrl.toPercentEncoding(subject).data()
-            encoded_subject = bytes(subject_bytes).decode('utf-8')
+            encoded_subject = bytes(subject_bytes).decode("utf-8")
             params.append(f"subject={encoded_subject}")
         if body:
             # Convert QByteArray data to bytes explicitly
             body_bytes = QUrl.toPercentEncoding(body).data()
-            encoded_body = bytes(body_bytes).decode('utf-8')
+            encoded_body = bytes(body_bytes).decode("utf-8")
             params.append(f"body={encoded_body}")
 
         if params:

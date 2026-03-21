@@ -151,9 +151,11 @@ class MeetingRepository:
         """
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(Meeting).where(
-                Meeting.meeting_date.between(start_date, end_date)
-            ).order_by(Meeting.meeting_date.asc())
+            stmt = (
+                select(Meeting)
+                .where(Meeting.meeting_date.between(start_date, end_date))
+                .order_by(Meeting.meeting_date.asc())
+            )
             return list(session.scalars(stmt).all())
         finally:
             if self._session is None:

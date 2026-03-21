@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import Signal
 from ui.styles import COLORS
 
 
@@ -25,6 +25,7 @@ class ClickableCard(QFrame):
     """
     A custom QFrame that emits a signal when clicked, mimicking a button.
     """
+
     clicked = Signal(str)
 
     def __init__(self, card_id: str, parent=None):
@@ -60,6 +61,7 @@ class DashboardView(QWidget):
     visualizes data through Matplotlib charts for a quick overview of
     the internship program's status.
     """
+
     filter_requested = Signal(str)
 
     def __init__(self, intern_service, doc_service, meeting_service, venue_service):
@@ -128,7 +130,10 @@ class DashboardView(QWidget):
             "Sem Local", "fa5s.map-marker-alt", COLORS["danger"], "no_venue"
         )
         self.card_pending = self._create_card_widget(
-            "Documentos Pendentes", "fa5s.file-contract", COLORS["warning"], "pending_docs"
+            "Documentos Pendentes",
+            "fa5s.file-contract",
+            COLORS["warning"],
+            "pending_docs",
         )
         self.card_meetings = self._create_card_widget(
             "Reuniões (Mês)", "fa5s.calendar-check", COLORS["success"], "meetings"
@@ -199,7 +204,9 @@ class DashboardView(QWidget):
         charts_layout.addWidget(doc_container)
         layout.addLayout(charts_layout, stretch=1)
 
-    def _create_card_widget(self, title: str, icon_name: str, color_hex: str, card_id: str = "") -> ClickableCard:
+    def _create_card_widget(
+        self, title: str, icon_name: str, color_hex: str, card_id: str = ""
+    ) -> ClickableCard:
         """
         Creates a styled ClickableCard to be used as a KPI metric.
 
@@ -218,7 +225,7 @@ class DashboardView(QWidget):
         )
         # Connect the internal click signal to the dashboard's external signal
         frame.clicked.connect(self.filter_requested.emit)
-        
+
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(20)
         shadow.setColor(QColor(0, 0, 0, 30))
@@ -311,16 +318,22 @@ class DashboardView(QWidget):
 
         total_interns = self.i_service.repo.count_total()
         no_venue_count = self.i_service.repo.count_without_venue()
-        
+
         # Capture current document filter text
         filter_doc = self.combo_doc_filter.currentText()
-        
+
         # Update card title to reflect filter
-        card_pending_title = self.card_pending.findChild(QLabel) # Finds the first label (the value)
+        card_pending_title = self.card_pending.findChild(
+            QLabel
+        )  # Finds the first label (the value)
         # We need the second label for the title. Let's find it by object name or text
         for lbl in self.card_pending.findChildren(QLabel):
             if lbl.text().isupper() or "DOCUMENTOS" in lbl.text().upper():
-                title_text = "TODOS PENDENTES" if filter_doc == "Todos" else f"PENDENTES: {filter_doc.upper()}"
+                title_text = (
+                    "TODOS PENDENTES"
+                    if filter_doc == "Todos"
+                    else f"PENDENTES: {filter_doc.upper()}"
+                )
                 lbl.setText(title_text)
 
         # Recalculate pending items based on the filter
@@ -328,7 +341,9 @@ class DashboardView(QWidget):
             total_pending_items = self.d_service.count_total_pending()
         else:
             # Get IDs of interns with this specific pending doc
-            pending_ids = self.d_service.repo.get_intern_ids_with_pending_docs(filter_doc)
+            pending_ids = self.d_service.repo.get_intern_ids_with_pending_docs(
+                filter_doc
+            )
             total_pending_items = len(pending_ids)
 
         meetings_month = self.m_service.repo.count_this_month()

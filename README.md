@@ -20,13 +20,19 @@ The application is built using the **Repository Pattern** with **Dependency Inje
 
 ## Core Features
 
-*   **Intern Management:** Full CRUD (Create, Read, Update, Delete) operations with data validation for student records.
+*   **Intern Management:** Full CRUD operations with data validation, including **visual indicators** for contract expiration and **time elapsed progress bars**.
+*   **Communication Shortcuts:** Integrated actions for quick contact via **WhatsApp and E-mail**.
 *   **Venue Management:** Manage internship locations and their supervisors.
-*   **Meeting Scheduling:** Track meetings and attendance.
+*   **Supervision & Meetings:**
+    *   **Supervision Calendar:** Monthly view for tracking meetings and on-site visits.
+    *   **Visit Evidence:** Secure photo storage with automatic ISO sanitization.
 *   **Evaluation System:**
     *   Customizable, weighted grading criteria.
     *   Automatic calculation of averages and final status (Pass/Fail).
-    *   A user-friendly interface for grade entry.
+*   **Productivity Tools:**
+    *   **Batch Export:** Simultaneous generation of multiple PDF reports.
+    *   **Collective Approval:** Bulk processing of mandatory documents.
+    *   **Interactive Dashboard:** KPI cards with drill-down filtering.
 *   **Document Generation:** Automatically create essential documents like contracts and attendance sheets.
 *   **Batch Import:** Process `.csv` files to add or update multiple records at once using an "upsert" logic.
 *   **Data Persistence:** Uses a local SQLite database for simplicity and portability.
@@ -85,30 +91,33 @@ Follow the steps below to set up and run the application locally.
 
 ## Project Architecture
 
-The project is organized into a modular structure to promote maintainability and scalability.
+The project is organized into a modular structure to promote maintainability and scalability, following the **Repository Pattern** and **Service Layer** principles.
 
 ```
 src/
 ├── core/
-│   └── models/          # Domain entities (e.g., Intern, Venue, Grade)
+│   └── models/          # Domain entities (SQLAlchemy Models)
 ├── data/
-│   └── database.py      # Database connector (SQLite)
-├── repository/          # Data Access Layer
-├── services/            # Service Layer (Business Logic)
+│   └── database.py      # Database connector and session management
+├── repository/          # Data Access Layer (Abstraction over SQLAlchemy)
+├── services/            # Business Logic (Batch Ops, Reports, Communications)
 ├── ui/                  # Presentation Layer (PySide6 / Qt)
-│   ├── dialogs/         # Form dialogs (Add/Edit)
-│   └── main_window.py   # Main application window
-├── utils/               # Utility modules (validators, etc.)
-└── main.py              # Application entry point and Dependency Injection setup
+│   ├── components/      # Reusable UI widgets (Metric cards, Stat cards)
+│   ├── dialogs/         # Form dialogs and configuration windows
+│   ├── views/           # Specialized views (Dashboard, Calendar, Venues)
+│   └── main_window.py   # Application shell and navigation logic
+├── utils/               # Helpers (Validators, Text processors, Seeders)
+└── main.py              # Entry point and Dependency Injection container
 ```
 
-The architecture is composed of distinct layers:
+### Layer Responsibilities
 
--   **`core`**: Contains the fundamental data structures (models) of the application.
--   **`data`**: Manages the database connection.
--   **`repository`**: Mediates between the domain and data mapping layers using a collection-like interface for accessing domain objects.
--   **`services`**: Contains the business logic of the application.
--   **`ui`**: The graphical user interface, built with PySide6.
+-   **`core`**: Defines the fundamental data structures and business rules.
+-   **`data`**: Handles low-level database operations and migrations (Alembic).
+-   **`repository`**: Provides a clean interface for data retrieval and persistence, decoupling the domain from the DB engine.
+-   **`services`**: Orchestrates complex operations, such as batch report generation and automated communication protocols.
+-   **`ui`**: Manages the user interface, utilizing custom delegates for advanced table rendering (progress bars, status icons).
+-   **`utils`**: Contains cross-cutting concerns like data validation and URL formatting for external integrations.
 
 ---
 

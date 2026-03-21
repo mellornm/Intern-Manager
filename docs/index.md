@@ -1,6 +1,6 @@
 # Intern Manager Pro
 
-[![Release](https://img.shields.io/badge/Release-v2.0.0-005A9E?style=flat-square)](https://github.com/vonroderik/Intern-Manager/releases)
+[![Release](https://img.shields.io/badge/Release-v2.1.0-005A9E?style=flat-square)](https://github.com/vonroderik/Intern-Manager/releases)
 [![Platform](https://img.shields.io/badge/Platform-Windows_|_macOS-gray?style=flat-square)](https://github.com/vonroderik/Intern-Manager)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](https://github.com/vonroderik/Intern-Manager/blob/main/LICENSE)
 
@@ -15,28 +15,30 @@ O **Intern Manager Pro** foi desenvolvido para solucionar a fragmentação de da
 ## Funcionalidades do Sistema
 
 ### 1. Gestão de Discentes
-Módulo responsável pelo cadastro e manutenção dos dados dos estagiários.
+Módulo central para cadastro e acompanhamento da jornada acadêmica dos estagiários.
 
-* Controle de vigência de contratos.
-* Associação com supervisores e locais de estágio (Venues).
-* Histórico completo de alterações.
+* **Indicadores de Prazo:** Alertas visuais para contratos próximos do vencimento e barra de progresso temporal (% de conclusão do estágio).
+* **Comunicação Direta:** Atalhos integrados para WhatsApp e E-mail, facilitando o contato rápido com o discente.
+* **Interface Otimizada:** Barra de ações inteligente com menus de contexto para registro rápido de notas, reuniões e observações.
 
-### 2. Módulo de Visitas Técnicas (Novo na v2.0.0)
-Ferramenta de auditoria para supervisores de campo. Permite o registro detalhado das visitas realizadas in-loco.
+### 2. Módulo de Visitas e Supervisão
+Ferramenta de auditoria e planejamento para supervisores de campo.
 
-* **Registro de Evidências:** Upload e armazenamento seguro de fotos das visitas.
-* **Sanitização de Arquivos:** Renomeação automática de arquivos para padrão ISO.
-* **Backup:** Ferramenta de exportação em lote para segurança dos dados.
+* **Calendário de Supervisão:** Visão mensal integrada de reuniões e visitas técnicas agendadas.
+* **Registro de Evidências:** Upload e armazenamento seguro de fotos com sanitização automática de arquivos para padrão ISO.
+* **Backup e Exportação:** Ferramenta de exportação em lote das evidências colhidas em campo.
 
 ### 3. Controle Documental
-Monitoramento visual (Dashboard) do status de entrega de documentos obrigatórios.
+Gestão de conformidade e monitoramento do status de entrega de documentos obrigatórios.
 
-* Termos de Compromisso.
-* Fichas de Avaliação.
-* Relatórios Parciais.
+* **Operações em Massa:** Aprovação coletiva de documentos para agilizar fluxos de trabalho repetitivos.
+* **Dashboard Interativo:** Cards de KPI clicáveis com função de *drill-down* para filtragem instantânea da lista de alunos.
 
 ### 4. Geração de Relatórios
-Compilação automatizada de todos os dados do semestre em um arquivo PDF padronizado, pronto para impressão e assinatura.
+Compilação automatizada de dados para formalização do estágio e auditoria.
+
+* **Exportação em Massa (Batch Export):** Geração simultânea de múltiplos relatórios PDF para alunos selecionados.
+* **Padronização:** Relatórios formatados e prontos para impressão, garantindo a integridade dos dados semestrais.
 
 ---
 

@@ -2,6 +2,8 @@
 Main window and user interface for the Intern Manager application.
 """
 
+from typing import Optional
+
 import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QIcon, QPalette
@@ -18,8 +20,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
-    QPushButton,
     QProgressDialog,
+    QPushButton,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -27,10 +29,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from typing import Optional
-
 # Config
 from config import RESOURCES_DIR
+from services.batch_report_worker import BatchReportWorker
+from services.communication_service import CommunicationService
 
 # Models & Services
 from services.document_service import DocumentService
@@ -43,13 +45,12 @@ from services.observation_service import ObservationService
 from services.report_service import ReportService
 from services.venue_service import VenueService
 from services.visit_service import VisitService
-from services.communication_service import CommunicationService
+from ui.calendar_view import CalendarView
 
 # Styles and Components
 from ui.criteria_view import CriteriaView
 from ui.dashboard_view import DashboardView
-from ui.calendar_view import CalendarView
-from ui.delegates import StatusDelegate, ProgressBarDelegate
+from ui.delegates import ProgressBarDelegate, StatusDelegate
 
 # Dialogs
 from ui.dialogs.batch_document_dialog import BatchDocumentDialog
@@ -64,7 +65,6 @@ from ui.dialogs.settings_dialog import SettingsDialog
 from ui.dialogs.visit_dialog import VisitDialog
 from ui.styles import COLORS
 from ui.venue_view import VenueView
-from services.batch_report_worker import BatchReportWorker
 
 
 class MainWindow(QMainWindow):
@@ -213,7 +213,7 @@ class MainWindow(QMainWindow):
         app_title.setStyleSheet(
             "font-size: 20px; font-weight: 900; padding: 30px 20px 5px 20px; letter-spacing: 1px;"
         )
-        app_subtitle = QLabel("versão 2.0.0")
+        app_subtitle = QLabel("versão 2.1.0")
         app_subtitle.setStyleSheet(
             f"font-size: 12px; font-weight: normal; color: {COLORS['secondary']}; padding: 0 20px 30px 20px;"
         )
@@ -259,7 +259,9 @@ class MainWindow(QMainWindow):
             QListWidgetItem(qta.icon("fa5s.tasks", color="white"), "  Critérios")
         )
         self.sidebar_list.addItem(
-            QListWidgetItem(qta.icon("fa5s.calendar-alt", color="white"), "  Calendário")
+            QListWidgetItem(
+                qta.icon("fa5s.calendar-alt", color="white"), "  Calendário"
+            )
         )
 
         slayout.addWidget(self.sidebar_list)

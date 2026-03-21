@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMenu,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QColor, QPalette, QCursor
 import qtawesome as qta
 
@@ -161,18 +161,26 @@ class VenueView(QWidget):
             QMenu::separator {{ height: 1px; background: {COLORS["border"]}; margin: 5px 10px; }}
         """)
 
-        act_edit = menu.addAction(qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Local")
+        act_edit = menu.addAction(
+            qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Local"
+        )
         act_edit.triggered.connect(self.edit_venue)
 
-        act_wa = menu.addAction(qta.icon("fa5b.whatsapp", color="#25D366"), "  Enviar WhatsApp")
+        act_wa = menu.addAction(
+            qta.icon("fa5b.whatsapp", color="#25D366"), "  Enviar WhatsApp"
+        )
         act_wa.triggered.connect(self.send_whatsapp)
 
-        act_mail = menu.addAction(qta.icon("fa5s.envelope", color="#EA4335"), "  Enviar E-mail")
+        act_mail = menu.addAction(
+            qta.icon("fa5s.envelope", color="#EA4335"), "  Enviar E-mail"
+        )
         act_mail.triggered.connect(self.send_email)
 
         menu.addSeparator()
 
-        act_del = menu.addAction(qta.icon("fa5s.trash-alt", color=COLORS["danger"]), "  Excluir Local")
+        act_del = menu.addAction(
+            qta.icon("fa5s.trash-alt", color=COLORS["danger"]), "  Excluir Local"
+        )
         act_del.triggered.connect(self.delete_venue)
 
         # Use global mouse position for the context menu
@@ -243,14 +251,33 @@ class VenueView(QWidget):
 
     def send_whatsapp(self):
         """Triggers the WhatsApp communication service for the selected venue's supervisor."""
+
+        settings = QSettings("MyOrganization", "InternManager2026")
+        institution_name = str(
+            settings.value("institution_name", "Nome da Instituição Padrão")
+        )
+        coordinator_name = str(
+            settings.value("coordinator_name", "Nome do Coordenador Padrão")
+        )
+
         v = self.get_selected()
         if not v:
             return
         if not v.supervisor_phone:
-            QMessageBox.warning(self, "Atenção", f"O local '{v.venue_name}' não possui telefone de supervisor cadastrado.")
+            QMessageBox.warning(
+                self,
+                "Atenção",
+                f"O local '{v.venue_name}' não possui telefone de supervisor cadastrado.",
+            )
             return
-        
-        self.comm_service.open_whatsapp(v.supervisor_phone, f"Olá {v.supervisor_name or ''}, sou o supervisor de estágio. Gostaria de tratar sobre os estagiários alocados no local '{v.venue_name}'.")
+
+        if self.comm_service:
+            self.comm_service.open_whatsapp(
+                v.supervisor_phone,
+                f"Olá {v.supervisor_name or ''}, meu nome é {coordinator_name}. Sou supervisor de estágios na {institution_name}. Gostaria de tratar sobre o(s) estagiário(s) alocado(s) na clínica '{v.venue_name}'. Qual o melhor horário para conversarmos?",
+            )
+        else:
+            QMessageBox.critical(self, "Erro", "Serviço de comunicação não disponível.")
 
     def send_email(self):
         """Triggers the Email communication service for the selected venue's supervisor."""
@@ -258,10 +285,20 @@ class VenueView(QWidget):
         if not v:
             return
         if not v.supervisor_email:
-            QMessageBox.warning(self, "Atenção", f"O local '{v.venue_name}' não possui e-mail de supervisor cadastrado.")
+            QMessageBox.warning(
+                self,
+                "Atenção",
+                f"O local '{v.venue_name}' não possui e-mail de supervisor cadastrado.",
+            )
             return
-        
-        self.comm_service.open_email(v.supervisor_email, f"Assunto: Acompanhamento de Estágio - {v.venue_name}")
+
+        if self.comm_service:
+            self.comm_service.open_email(
+                v.supervisor_email,
+                f"Assunto: Acompanhamento de Estágio - {v.venue_name}",
+            )
+        else:
+            QMessageBox.critical(self, "Erro", "Serviço de comunicação não disponível.")
 
     def delete_venue(self):
         """Deletes the selected venue after a confirmation dialog."""

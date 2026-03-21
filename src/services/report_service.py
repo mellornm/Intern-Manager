@@ -435,7 +435,7 @@ class ReportService:
         sig_elements.append(Spacer(1, 10 * mm))
         sig_elements.append(
             Paragraph(
-                f"Documento gerado eletronicamente em {date_emission} via Intern Manager Pro v2.0.0.<br/>Autenticidade sujeita a verificação.",
+                f"Documento gerado eletronicamente em {date_emission} via Intern Manager Pro v2.1.0.<br/>Autenticidade sujeita a verificação.",
                 styles["SmallText"],
             )
         )

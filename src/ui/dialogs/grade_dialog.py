@@ -165,7 +165,7 @@ class GradeDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def load_data(self):
-        # CORREÇÃO 1: Guard clause para garantir ID
+
         if not self.intern.intern_id:
             return
 
@@ -205,7 +205,7 @@ class GradeDialog(QDialog):
         self.lbl_total.setText(f"{total:.2f}")
 
         # Color Coding
-        if total >= 7.0:
+        if total >= 6.0:
             self.lbl_total.setStyleSheet(
                 f"font-weight: 900; color: {COLORS['success']}; font-size: 28px;"
             )

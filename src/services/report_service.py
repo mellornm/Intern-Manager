@@ -180,7 +180,7 @@ class ReportService:
         total_score = sum(
             grades_map.get(c.criteria_id, 0.0) for c in criteria_list if c.criteria_id
         )
-        is_approved = total_score >= 7.0
+        is_approved = total_score >= 6.0
         status_text = "APROVADO" if is_approved else "EM ANÁLISE"
         status_color = (
             colors.HexColor("#27AE60") if is_approved else colors.HexColor("#E67E22")
@@ -244,7 +244,7 @@ class ReportService:
             if c.criteria_id is None:
                 continue
             val = grades_map.get(c.criteria_id, 0.0)
-            color_str = "#27AE60" if val >= (c.weight * 0.7) else "#C0392B"
+            color_str = "#27AE60" if val >= (c.weight * 0.6) else "#C0392B"
 
             p_criterio = Paragraph(c.name, styles["NormalText"])
             p_peso = Paragraph(f"{c.weight:.1f}", styles["NormalText"])

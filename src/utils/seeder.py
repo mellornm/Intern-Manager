@@ -36,12 +36,12 @@ def seed_default_criteria(service: EvaluationCriteriaService):
             description="Entrega de documentos dentro dos prazos indicados.",
         ),
         EvaluationCriteria(
-            name="Avaliação do Supervisor Local.",
+            name="Avaliação do Supervisor Local",
             weight=3.0,
             description="Nota conferida pelo supervisor do local de estágio.",
         ),
         EvaluationCriteria(
-            name="Presença em Reuniões.",
+            name="Presença em Reuniões",
             weight=2.0,
             description="Presença nas reuniões de estágio.",
         ),

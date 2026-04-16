@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QIcon, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -357,6 +358,17 @@ class MainWindow(QMainWindow):
         self.btn_clear_filters.setVisible(False)
         actions.addWidget(self.btn_clear_filters)
 
+        # 1.2 Status Filter
+        self.combo_status_filter = QComboBox()
+        self.combo_status_filter.addItems(["Todos", "Ativos", "Concluídos"])
+        self.combo_status_filter.setFixedWidth(150)
+        self.combo_status_filter.setStyleSheet(f"""
+            QComboBox {{ background-color: {COLORS["white"]}; border: 1px solid {COLORS["border"]}; border-radius: 6px; padding: 8px; color: {COLORS["dark"]}; }}
+            QComboBox:focus {{ border: 1px solid {COLORS["primary"]}; }}
+        """)
+        self.combo_status_filter.currentIndexChanged.connect(self.filter_table)
+        actions.addWidget(self.combo_status_filter)
+
         actions.addStretch()
 
         btn_import = QPushButton(" Importar Planilha")
@@ -616,10 +628,11 @@ class MainWindow(QMainWindow):
 
     def apply_filters(self):
         """
-        Centralized logic to filter the table based on search text and
-        the active dashboard category.
+        Centralized logic to filter the table based on search text,
+        active dashboard category, and the status filter.
         """
         search = self.txt_search.text().lower().strip()
+        status_filter = self.combo_status_filter.currentText()
 
         # Update UI feedback for active filters
         is_filtered = self.current_filter_mode != "all"
@@ -652,7 +665,21 @@ class MainWindow(QMainWindow):
                 if not name_item.data(Qt.ItemDataRole.UserRole + 2):
                     show_row = False
 
-            # 2. Apply Text Search (if row still visible)
+            # 2. Apply Status Filter
+            if show_row:
+                status_item = self.table.item(row, 4)
+                if status_item:
+                    status_text = status_item.text()
+                    if status_filter == "Ativos":
+                        # Ativos shows everything EXCEPT "Concluído"
+                        if status_text == "Concluído":
+                            show_row = False
+                    elif status_filter == "Concluídos":
+                        # Concluídos shows ONLY "Concluído"
+                        if status_text != "Concluído":
+                            show_row = False
+
+            # 3. Apply Text Search (if row still visible)
             if show_row and search:
                 match = False
                 for col in [1, 2, 3]:
@@ -669,6 +696,7 @@ class MainWindow(QMainWindow):
         self.current_filter_mode = "all"
         self.current_doc_type = "Todos"
         self.txt_search.clear()
+        self.combo_status_filter.setCurrentIndex(0)
         self.load_data()
 
     def get_selected_intern(self):

@@ -1,6 +1,6 @@
 from typing import List, Optional, Any
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from core.models.venue import Venue
 from data.database import db_manager
@@ -30,7 +30,8 @@ class VenueRepository:
         """
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(Venue).order_by(Venue.venue_name.asc())
+            # Eagerly load interns to check status in UI filters
+            stmt = select(Venue).options(selectinload(Venue.interns)).order_by(Venue.venue_name.asc())
             return list(session.scalars(stmt).all())
         finally:
             if self._session is None:

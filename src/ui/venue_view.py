@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QLabel,
     QMenu,
+    QComboBox,
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QColor, QPalette, QCursor
@@ -66,6 +67,35 @@ class VenueView(QWidget):
         self.btn_add.clicked.connect(self.add_venue)
         header.addWidget(self.btn_add)
         layout.addLayout(header)
+
+        # --- Toolbar (Filter) ---
+        toolbar = QHBoxLayout()
+        lbl_filter = QLabel("Filtrar por ocupação:")
+        lbl_filter.setStyleSheet(f"color: {COLORS['dark']}; font-weight: bold;")
+        toolbar.addWidget(lbl_filter)
+
+        self.combo_occupancy_filter = QComboBox()
+        self.combo_occupancy_filter.addItems([
+            "Todos", 
+            "Com Alunos Vinculados", 
+            "Sem Alunos Vinculados"
+        ])
+        self.combo_occupancy_filter.setFixedWidth(250)
+        self.combo_occupancy_filter.setStyleSheet(f"""
+            QComboBox {{ 
+                background-color: {COLORS["white"]}; 
+                border: 1px solid {COLORS["border"]}; 
+                border-radius: 6px; 
+                padding: 8px; 
+                color: {COLORS["dark"]}; 
+            }}
+            QComboBox:focus {{ border: 1px solid {COLORS["primary"]}; }}
+        """)
+        self.combo_occupancy_filter.currentIndexChanged.connect(self.refresh_data)
+        toolbar.addWidget(self.combo_occupancy_filter)
+        
+        toolbar.addStretch()
+        layout.addLayout(toolbar)
 
         # --- Table ---
         self.table = QTableWidget()
@@ -187,8 +217,29 @@ class VenueView(QWidget):
         menu.exec(QCursor.pos())
 
     def refresh_data(self):
-        """Fetches all venues from the service and repopulates the table."""
-        self.venues = self.service.get_all()
+        """Fetches all venues from the service and repopulates the table, applying occupancy filters."""
+        all_venues = self.service.get_all()
+        filter_text = self.combo_occupancy_filter.currentText()
+        
+        if filter_text == "Todos":
+            self.venues = all_venues
+        else:
+            # Define active/linked statuses
+            active_statuses = ["Ativo", "A Iniciar", "Incompleto"]
+            
+            if filter_text == "Com Alunos Vinculados":
+                # Venue must have AT LEAST ONE active intern
+                self.venues = [
+                    v for v in all_venues 
+                    if any(getattr(i, "status", "") in active_statuses for i in v.interns)
+                ]
+            elif filter_text == "Sem Alunos Vinculados":
+                # Venue must have NO interns OR ONLY completed interns
+                self.venues = [
+                    v for v in all_venues 
+                    if not any(getattr(i, "status", "") in active_statuses for i in v.interns)
+                ]
+
         self.table.setRowCount(0)
         for row, v in enumerate(self.venues):
             self.table.insertRow(row)

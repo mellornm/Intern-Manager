@@ -1,23 +1,23 @@
+import qtawesome as qta
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QColor, QCursor, QPalette
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QPushButton,
-    QHeaderView,
     QAbstractItemView,
-    QMessageBox,
+    QComboBox,
+    QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMenu,
-    QComboBox,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QSettings
-from PySide6.QtGui import QColor, QPalette, QCursor
-import qtawesome as qta
 
-from ui.styles import COLORS
 from ui.dialogs.venue_dialog import VenueDialog
+from ui.styles import COLORS
 
 
 class VenueView(QWidget):
@@ -75,11 +75,9 @@ class VenueView(QWidget):
         toolbar.addWidget(lbl_filter)
 
         self.combo_occupancy_filter = QComboBox()
-        self.combo_occupancy_filter.addItems([
-            "Todos", 
-            "Com Alunos Vinculados", 
-            "Sem Alunos Vinculados"
-        ])
+        self.combo_occupancy_filter.addItems(
+            ["Todos", "Com Alunos Vinculados", "Sem Alunos Vinculados"]
+        )
         self.combo_occupancy_filter.setFixedWidth(250)
         self.combo_occupancy_filter.setStyleSheet(f"""
             QComboBox {{ 
@@ -93,7 +91,7 @@ class VenueView(QWidget):
         """)
         self.combo_occupancy_filter.currentIndexChanged.connect(self.refresh_data)
         toolbar.addWidget(self.combo_occupancy_filter)
-        
+
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
@@ -107,15 +105,21 @@ class VenueView(QWidget):
         self.table.setPalette(palette)
 
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Local", "Supervisor", "Telefone"])
+        self.table.setHorizontalHeaderLabels(
+            ["ID", "Local", "Supervisor", "Alunos Vinculados"]
+        )
         self.table.setColumnHidden(0, True)
 
         self.table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
         self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
+            2, QHeaderView.ResizeMode.Interactive
         )
+        self.table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+        self.table.setColumnWidth(2, 200)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setShowGrid(False)
@@ -220,24 +224,30 @@ class VenueView(QWidget):
         """Fetches all venues from the service and repopulates the table, applying occupancy filters."""
         all_venues = self.service.get_all()
         filter_text = self.combo_occupancy_filter.currentText()
-        
+
         if filter_text == "Todos":
             self.venues = all_venues
         else:
             # Define active/linked statuses
             active_statuses = ["Ativo", "A Iniciar", "Incompleto"]
-            
+
             if filter_text == "Com Alunos Vinculados":
                 # Venue must have AT LEAST ONE active intern
                 self.venues = [
-                    v for v in all_venues 
-                    if any(getattr(i, "status", "") in active_statuses for i in v.interns)
+                    v
+                    for v in all_venues
+                    if any(
+                        getattr(i, "status", "") in active_statuses for i in v.interns
+                    )
                 ]
             elif filter_text == "Sem Alunos Vinculados":
                 # Venue must have NO interns OR ONLY completed interns
                 self.venues = [
-                    v for v in all_venues 
-                    if not any(getattr(i, "status", "") in active_statuses for i in v.interns)
+                    v
+                    for v in all_venues
+                    if not any(
+                        getattr(i, "status", "") in active_statuses for i in v.interns
+                    )
                 ]
 
         self.table.setRowCount(0)
@@ -247,13 +257,27 @@ class VenueView(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(str(v.venue_id)))
 
             item_name = QTableWidgetItem(v.venue_name)
+
             font = item_name.font()
             font.setBold(True)
             item_name.setFont(font)
             self.table.setItem(row, 1, item_name)
 
             self.table.setItem(row, 2, QTableWidgetItem(v.supervisor_name or "-"))
-            self.table.setItem(row, 3, QTableWidgetItem(v.supervisor_phone or "-"))
+
+            # Column 3: Linked Interns (Active only)
+            active_statuses = ["Ativo", "A Iniciar", "Incompleto"]
+            linked_interns = [
+                i.name for i in v.interns if getattr(i, "status", "") in active_statuses
+            ]
+            interns_text = ", ".join(linked_interns) if linked_interns else "Nenhum"
+
+            item_interns = QTableWidgetItem(interns_text)
+            item_interns.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            if not linked_interns:
+                item_interns.setForeground(QColor(COLORS["medium"]))
+
+            self.table.setItem(row, 3, item_interns)
 
     def get_selected(self):
         """

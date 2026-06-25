@@ -135,12 +135,15 @@ class DocumentRepository:
 
     def count_pending(self) -> int:
         """
-        Counts the total number of documents that are not in 'Aprovado' status.
+        Counts the total number of documents that are not in 'Aprovado' status for active interns.
         """
+        from core.models.intern import Intern
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(func.count(Document.document_id)).where(
-                Document.status != "Aprovado"
+            stmt = (
+                select(func.count(Document.document_id))
+                .join(Intern, Document.intern_id == Intern.intern_id)
+                .where(Document.status != "Aprovado", Intern.is_active)
             )
             return session.scalar(stmt) or 0
         finally:
@@ -151,12 +154,17 @@ class DocumentRepository:
         self, document_name: Optional[str] = None
     ) -> List[int]:
         """
-        Identifies all interns who have at least one document that is not 'Aprovado'.
+        Identifies all active interns who have at least one document that is not 'Aprovado'.
         Can be filtered by a specific document name.
         """
+        from core.models.intern import Intern
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(Document.intern_id).where(Document.status != "Aprovado")
+            stmt = (
+                select(Document.intern_id)
+                .join(Intern, Document.intern_id == Intern.intern_id)
+                .where(Document.status != "Aprovado", Intern.is_active)
+            )
             if document_name and document_name != "Todos":
                 stmt = stmt.where(Document.document_name.like(f"%{document_name}%"))
 

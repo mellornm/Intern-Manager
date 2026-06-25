@@ -84,11 +84,14 @@ class Intern(Base):
     @property
     def status(self) -> str:
         """
-        Dynamically determines the intern's status based on current date.
+        Dynamically determines the intern's status based on active status and dates.
 
         Returns:
             str: 'Ativo', 'Concluído', 'A Iniciar', or 'Incompleto'.
         """
+        if not self.is_active:
+            return "Concluído"
+
         if not self.start_date or not self.end_date:
             return "Incompleto"
 
@@ -96,14 +99,11 @@ class Intern(Base):
             # Assumes dates are stored in ISO format (YYYY-MM-DD)
             today = datetime.now().date()
             start = datetime.strptime(self.start_date, "%Y-%m-%d").date()
-            end = datetime.strptime(self.end_date, "%Y-%m-%d").date()
 
             if today < start:
                 return "A Iniciar"
-            elif start <= today <= end:
-                return "Ativo"
             else:
-                return "Concluído"
+                return "Ativo"
         except (ValueError, TypeError):
             return "Erro de Data"
 

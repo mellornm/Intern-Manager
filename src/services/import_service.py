@@ -174,6 +174,7 @@ class ImportService:
                 working_hours=row.get("working_hours"),
                 working_days=row.get("working_days"),
                 term=row.get("term", ""),
+                is_active=existing_intern.is_active if existing_intern else True,
             )
 
             if existing_intern:

@@ -116,20 +116,23 @@ class InternRepository:
             return False
 
     def count_total(self) -> int:
-        """Counts total number of interns."""
+        """Counts total number of active interns."""
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(func.count(Intern.intern_id))
+            stmt = select(func.count(Intern.intern_id)).where(Intern.is_active)
             return session.scalar(stmt) or 0
         finally:
             if self._session is None:
                 db_manager.SessionLocal.remove()
 
     def count_without_venue(self) -> int:
-        """Counts interns that are not allocated to any venue."""
+        """Counts active interns that are not allocated to any venue."""
         session = self._session or db_manager.get_session()
         try:
-            stmt = select(func.count(Intern.intern_id)).where(Intern.venue_id == None)
+            stmt = select(func.count(Intern.intern_id)).where(
+                Intern.venue_id.is_(None),
+                Intern.is_active
+            )
             return session.scalar(stmt) or 0
         finally:
             if self._session is None:

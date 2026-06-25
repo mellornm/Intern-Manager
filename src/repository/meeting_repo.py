@@ -109,17 +109,23 @@ class MeetingRepository:
 
     def count_this_month(self) -> int:
         """
-        Counts meetings that occurred in the current calendar month.
+        Counts meetings that occurred in the current calendar month for active interns.
         """
+        from core.models.intern import Intern
         session = self._session or db_manager.get_session()
         try:
             # SQLite strftime format: %m for month (01-12)
             current_month = func.strftime("%m", "now")
             current_year = func.strftime("%Y", "now")
 
-            stmt = select(func.count(Meeting.meeting_id)).where(
-                func.strftime("%m", Meeting.meeting_date) == current_month,
-                func.strftime("%Y", Meeting.meeting_date) == current_year,
+            stmt = (
+                select(func.count(Meeting.meeting_id))
+                .join(Intern, Meeting.intern_id == Intern.intern_id)
+                .where(
+                    func.strftime("%m", Meeting.meeting_date) == current_month,
+                    func.strftime("%Y", Meeting.meeting_date) == current_year,
+                    Intern.is_active,
+                )
             )
             return session.scalar(stmt) or 0
         finally:
@@ -128,16 +134,22 @@ class MeetingRepository:
 
     def get_intern_ids_with_meetings_this_month(self) -> List[int]:
         """
-        Returns IDs of interns who participated in at least one meeting this month.
+        Returns IDs of active interns who participated in at least one meeting this month.
         """
+        from core.models.intern import Intern
         session = self._session or db_manager.get_session()
         try:
             current_month = func.strftime("%m", "now")
             current_year = func.strftime("%Y", "now")
 
-            stmt = select(Meeting.intern_id).where(
-                func.strftime("%m", Meeting.meeting_date) == current_month,
-                func.strftime("%Y", Meeting.meeting_date) == current_year,
+            stmt = (
+                select(Meeting.intern_id)
+                .join(Intern, Meeting.intern_id == Intern.intern_id)
+                .where(
+                    func.strftime("%m", Meeting.meeting_date) == current_month,
+                    func.strftime("%Y", Meeting.meeting_date) == current_year,
+                    Intern.is_active,
+                )
             )
             result = session.scalars(stmt).all()
             return list(set(result))

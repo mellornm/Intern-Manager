@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QDateEdit,
     QComboBox,
+    QCheckBox,
 )
 from PySide6.QtCore import Qt, QDate
 import qtawesome as qta
@@ -214,6 +215,17 @@ class InternDialog(QDialog):
 
         form_layout.addRow(lbl("Vigência:"), date_layout)
 
+        # Checkbox Estágio Concluído
+        self.chk_concluded = QCheckBox("Estágio Concluído")
+        self.chk_concluded.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_concluded.setStyleSheet(f"""
+            QCheckBox {{
+                font-size: 13px;
+                color: {COLORS["dark"]};
+            }}
+        """)
+        form_layout.addRow(lbl("Status:"), self.chk_concluded)
+
         layout.addWidget(form_frame)
 
         # Botões
@@ -297,6 +309,8 @@ class InternDialog(QDialog):
             if d.isValid():
                 self.date_end.setDate(d)
 
+        self.chk_concluded.setChecked(not self.intern.is_active)
+
     def save_data(self):
         from utils.validations import validate_email_format
 
@@ -347,4 +361,5 @@ class InternDialog(QDialog):
             # Campos novos
             working_hours=self.txt_hours.text().strip() or None,
             working_days=self.txt_days.text().strip() or None,
+            is_active=not self.chk_concluded.isChecked(),
         )

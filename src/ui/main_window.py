@@ -719,6 +719,19 @@ class MainWindow(QMainWindow):
             return None
         return self.service.get_by_id(int(item_id.text()))
 
+    def toggle_intern_active_status(self):
+        """Toggles the selected intern's active status (concluded vs active) and updates the database."""
+        intern = self.get_selected_intern()
+        if not intern:
+            return
+        intern.is_active = not intern.is_active
+        try:
+            self.service.update_intern(intern)
+            self.load_data()
+            self.page_dashboard.refresh_data()
+        except Exception as e:
+            QMessageBox.warning(self, "Erro", f"Erro ao atualizar status: {e}")
+
     # --- DIALOG WRAPPERS ---
     def open_add_dialog(self):
         """Opens a dialog to add a new intern and handles the creation process."""
@@ -753,6 +766,7 @@ class MainWindow(QMainWindow):
                 i.end_date = data.end_date
                 i.working_days = data.working_days
                 i.working_hours = data.working_hours
+                i.is_active = data.is_active
 
                 self.service.update_intern(i)
                 self.load_data()
@@ -1004,6 +1018,8 @@ class MainWindow(QMainWindow):
             if item:
                 self.table.selectRow(item.row())
 
+            intern = self.get_selected_intern()
+
             act_edit = menu.addAction(
                 qta.icon("fa5s.pen", color=COLORS["dark"]), "  Editar Cadastro"
             )
@@ -1060,6 +1076,19 @@ class MainWindow(QMainWindow):
                 qta.icon("fa5s.file-pdf", color="#D0021B"), "  Gerar Relatório Final"
             )
             act_pdf.triggered.connect(self.open_report)
+
+            menu.addSeparator()
+
+            if intern:
+                if intern.is_active:
+                    act_toggle = menu.addAction(
+                        qta.icon("fa5s.check-circle", color="#27AE60"), "  Concluir Estágio"
+                    )
+                else:
+                    act_toggle = menu.addAction(
+                        qta.icon("fa5s.play-circle", color=COLORS["primary"]), "  Reativar Estágio"
+                    )
+                act_toggle.triggered.connect(self.toggle_intern_active_status)
 
             menu.addSeparator()
 

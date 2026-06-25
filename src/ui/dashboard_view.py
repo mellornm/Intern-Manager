@@ -314,7 +314,7 @@ class DashboardView(QWidget):
 
         This includes recalculating card values and redrawing all charts.
         """
-        interns = self.i_service.get_all_interns()
+        interns = [i for i in self.i_service.get_all_interns() if i.is_active]
 
         total_interns = self.i_service.repo.count_total()
         no_venue_count = self.i_service.repo.count_without_venue()
@@ -323,9 +323,6 @@ class DashboardView(QWidget):
         filter_doc = self.combo_doc_filter.currentText()
 
         # Update card title to reflect filter
-        card_pending_title = self.card_pending.findChild(
-            QLabel
-        )  # Finds the first label (the value)
         # We need the second label for the title. Let's find it by object name or text
         for lbl in self.card_pending.findChildren(QLabel):
             if lbl.text().isupper() or "DOCUMENTOS" in lbl.text().upper():

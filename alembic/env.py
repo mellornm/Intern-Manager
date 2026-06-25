@@ -18,6 +18,16 @@ if src_dir not in sys.path:
 from core.models.base import Base  # noqa: E402
 from config import DB_PATH  # noqa: E402
 
+# --- IMPORTAÇÃO DOS MODELOS PARA O ALEMBIC RECONHECÊ-LOS ---
+from core.models.intern import Intern  # noqa: E402, F401
+from core.models.venue import Venue  # noqa: E402, F401
+from core.models.document import Document  # noqa: E402, F401
+from core.models.grade import Grade  # noqa: E402, F401
+from core.models.meeting import Meeting  # noqa: E402, F401
+from core.models.observation import Observation  # noqa: E402, F401
+from core.models.visit import Visit  # noqa: E402, F401
+from core.models.evaluation_criteria import EvaluationCriteria  # noqa: E402, F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

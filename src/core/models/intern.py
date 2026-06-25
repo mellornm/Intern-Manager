@@ -1,6 +1,7 @@
-from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, func
+from typing import TYPE_CHECKING, List, Optional
+
+from sqlalchemy import Boolean, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.models.base import Base
@@ -8,11 +9,11 @@ from utils.validations import format_date_to_br
 
 if TYPE_CHECKING:
     # Import for type checking only to avoid circular dependency
-    from core.models.venue import Venue
     from core.models.document import Document
     from core.models.grade import Grade
     from core.models.meeting import Meeting
     from core.models.observation import Observation
+    from core.models.venue import Venue
     from core.models.visit import Visit
 
 
@@ -42,6 +43,9 @@ class Intern(Base):
     end_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     working_days: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     working_hours: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="1", nullable=False
+    )
 
     # Foreign key relationship to the venue (matches legacy order)
     venue_id: Mapped[Optional[int]] = mapped_column(

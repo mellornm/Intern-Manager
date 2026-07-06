@@ -138,6 +138,7 @@ class DocumentRepository:
         Counts the total number of documents that are not in 'Aprovado' status for active interns.
         """
         from core.models.intern import Intern
+
         session = self._session or db_manager.get_session()
         try:
             stmt = (
@@ -158,6 +159,7 @@ class DocumentRepository:
         Can be filtered by a specific document name.
         """
         from core.models.intern import Intern
+
         session = self._session or db_manager.get_session()
         try:
             stmt = (

@@ -709,7 +709,11 @@ class MainWindow(QMainWindow):
             The Intern object for the selected row, or None if no row is
             selected or the intern cannot be found.
         """
-        rows = self.table.selectionModel().selectedRows()
+        rows = [
+            index
+            for index in self.table.selectionModel().selectedRows()
+            if not self.table.isRowHidden(index.row())
+        ]
         if not rows:
             QMessageBox.warning(self, "Atenção", "Selecione um aluno na tabela.")
             return None
@@ -960,8 +964,12 @@ class MainWindow(QMainWindow):
         self.load_data()
 
     def _open_context_menu(self, pos):
-        # 1. Pega os itens selecionados
-        selection = self.table.selectionModel().selectedRows()
+        # 1. Pega os itens selecionados (desconsiderando linhas ocultas)
+        selection = [
+            index
+            for index in self.table.selectionModel().selectedRows()
+            if not self.table.isRowHidden(index.row())
+        ]
         if not selection:
             return
 
@@ -1017,6 +1025,12 @@ class MainWindow(QMainWindow):
             item = self.table.itemAt(pos)
             if item:
                 self.table.selectRow(item.row())
+                # Re-seleciona para garantir consistência
+                selection = [
+                    index
+                    for index in self.table.selectionModel().selectedRows()
+                    if not self.table.isRowHidden(index.row())
+                ]
 
             intern = self.get_selected_intern()
 
@@ -1082,11 +1096,13 @@ class MainWindow(QMainWindow):
             if intern:
                 if intern.is_active:
                     act_toggle = menu.addAction(
-                        qta.icon("fa5s.check-circle", color="#27AE60"), "  Concluir Estágio"
+                        qta.icon("fa5s.check-circle", color="#27AE60"),
+                        "  Concluir Estágio",
                     )
                 else:
                     act_toggle = menu.addAction(
-                        qta.icon("fa5s.play-circle", color=COLORS["primary"]), "  Reativar Estágio"
+                        qta.icon("fa5s.play-circle", color=COLORS["primary"]),
+                        "  Reativar Estágio",
                     )
                 act_toggle.triggered.connect(self.toggle_intern_active_status)
 

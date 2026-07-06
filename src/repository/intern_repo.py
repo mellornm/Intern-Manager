@@ -130,8 +130,7 @@ class InternRepository:
         session = self._session or db_manager.get_session()
         try:
             stmt = select(func.count(Intern.intern_id)).where(
-                Intern.venue_id.is_(None),
-                Intern.is_active
+                Intern.venue_id.is_(None), Intern.is_active
             )
             return session.scalar(stmt) or 0
         finally:

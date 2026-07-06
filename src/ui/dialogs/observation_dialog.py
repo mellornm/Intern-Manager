@@ -1,20 +1,19 @@
 from datetime import datetime
 
+import qtawesome as qta
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
     QListWidget,
     QListWidgetItem,
-    QLabel,
+    QMessageBox,
     QPushButton,
     QTextEdit,
-    QMessageBox,
-    QHBoxLayout,
-    QFrame,
+    QVBoxLayout,
 )
-from PySide6.QtCore import Qt, QSize
-import qtawesome as qta
-
 
 from core.models.intern import Intern
 from core.models.observation import Observation

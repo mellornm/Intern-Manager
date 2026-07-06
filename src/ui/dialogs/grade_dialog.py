@@ -165,7 +165,6 @@ class GradeDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def load_data(self):
-
         if not self.intern.intern_id:
             return
 

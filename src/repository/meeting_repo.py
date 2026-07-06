@@ -112,6 +112,7 @@ class MeetingRepository:
         Counts meetings that occurred in the current calendar month for active interns.
         """
         from core.models.intern import Intern
+
         session = self._session or db_manager.get_session()
         try:
             # SQLite strftime format: %m for month (01-12)
@@ -137,6 +138,7 @@ class MeetingRepository:
         Returns IDs of active interns who participated in at least one meeting this month.
         """
         from core.models.intern import Intern
+
         session = self._session or db_manager.get_session()
         try:
             current_month = func.strftime("%m", "now")

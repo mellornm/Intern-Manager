@@ -31,7 +31,11 @@ class VenueRepository:
         session = self._session or db_manager.get_session()
         try:
             # Eagerly load interns to check status in UI filters
-            stmt = select(Venue).options(selectinload(Venue.interns)).order_by(Venue.venue_name.asc())
+            stmt = (
+                select(Venue)
+                .options(selectinload(Venue.interns))
+                .order_by(Venue.venue_name.asc())
+            )
             return list(session.scalars(stmt).all())
         finally:
             if self._session is None:

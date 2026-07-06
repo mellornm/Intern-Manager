@@ -371,10 +371,21 @@ class ReportService:
             obs_data: list = []
             for obs in observations:
                 date_str = obs.last_update or "S/D"
+                if date_str and date_str != "S/D":
+                    try:
+                        dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                        date_str = dt.strftime("%Y-%m-%d %H:%M")
+                    except ValueError:
+                        if len(date_str) >= 16 and date_str[10] == " " and date_str[13] == ":":
+                            date_str = date_str[:16]
+
                 text_str = obs.observation or "Sem conteúdo"
 
                 obs_data.append(
-                    [str(date_str), Paragraph(str(text_str), styles["NormalText"])]
+                    [
+                        Paragraph(str(date_str), styles["NormalText"]),
+                        Paragraph(str(text_str), styles["NormalText"]),
+                    ]
                 )
 
             t_obs = Table(obs_data, colWidths=[30 * mm, 150 * mm])
@@ -385,6 +396,7 @@ class ReportService:
                         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
                         ("BOX", (0, 0), (-1, -1), 1, BORDER_COLOR),
                         ("PADDING", (0, 0), (-1, -1), 6),
+                        ("RIGHTPADDING", (0, 0), (0, -1), 12),
                     ]
                 )
             )

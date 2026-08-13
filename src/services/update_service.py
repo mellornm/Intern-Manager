@@ -1,8 +1,10 @@
-import requests
 import webbrowser
+
+import requests
 from packaging import version
 from PySide6.QtWidgets import QMessageBox
-from config import VERSION, REPO_URL
+
+from config import REPO_URL, VERSION
 
 
 def check_for_updates(parent_window):
@@ -30,7 +32,7 @@ def check_for_updates(parent_window):
                 )
 
                 if reply == QMessageBox.StandardButton.Yes:
-                    webbrowser.open("https://vonroderik.github.io/Intern-Manager/")
+                    webbrowser.open("https://mellornm.github.io/Intern-Manager/")
 
     except Exception as e:
         print(f"Erro ao verificar updates: {e}")

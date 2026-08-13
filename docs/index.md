@@ -1,8 +1,8 @@
 # Intern Manager Pro
 
-[![Release](https://img.shields.io/badge/Release-v2.1.0-005A9E?style=flat-square)](https://github.com/vonroderik/Intern-Manager/releases)
-[![Platform](https://img.shields.io/badge/Platform-Windows_|_macOS-gray?style=flat-square)](https://github.com/vonroderik/Intern-Manager)
-[![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](https://github.com/vonroderik/Intern-Manager/blob/main/LICENSE)
+[![Release](https://img.shields.io/badge/Release-v2.1.0-005A9E?style=flat-square)](https://github.com/mellornm/Intern-Manager/releases)
+[![Platform](https://img.shields.io/badge/Platform-Windows_|_macOS-gray?style=flat-square)](https://github.com/mellornm/Intern-Manager)
+[![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](https://github.com/mellornm/Intern-Manager/blob/main/LICENSE)
 
 ---
 
@@ -52,7 +52,7 @@ O sistema é distribuído como uma aplicação *standalone*, não necessitando d
 * **Espaço em Disco:** 200 MB livres.
 
 ### Procedimento
-1. Acesse a [Página de Download](https://github.com/vonroderik/Intern-Manager/releases) no GitHub.
+1. Acesse a [Página de Download](https://github.com/mellornm/Intern-Manager/releases) no GitHub.
 2.  Faça o download do arquivo compactado compatível com seu sistema operacional.
 3.  Descompacte o arquivo e execute o binário `InternManager`.
 

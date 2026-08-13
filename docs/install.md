@@ -4,9 +4,9 @@ O **Intern Manager Pro** foi projetado para ser o mais simples possível. Ele é
 
 <div align="center" markdown style="margin-top: 40px; margin-bottom: 40px;">
 
-[ :fontawesome-brands-windows: Baixar para Windows ](https://github.com/vonroderik/Intern-Manager/releases/latest/download/InternManager_Win.zip){ .md-button .md-button--primary style="font-size: 1.2rem; margin: 10px;" }
+[ :fontawesome-brands-windows: Baixar para Windows ](https://github.com/mellornm/Intern-Manager/releases/latest/download/InternManager_Win.zip){ .md-button .md-button--primary style="font-size: 1.2rem; margin: 10px;" }
 
-[ :fontawesome-brands-apple: Baixar para Mac ](https://github.com/vonroderik/Intern-Manager/releases/latest/download/InternManager_Mac.zip){ .md-button style="font-size: 1.2rem; margin: 10px;" }
+[ :fontawesome-brands-apple: Baixar para Mac ](https://github.com/mellornm/Intern-Manager/releases/latest/download/InternManager_Mac.zip){ .md-button style="font-size: 1.2rem; margin: 10px;" }
 
 </div>
 

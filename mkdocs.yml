@@ -1,10 +1,10 @@
 site_name: Intern Manager Pro
-site_url: https://vonroderik.github.io/Intern-Manager/
+site_url: https://mellornm.github.io/Intern-Manager/
 site_author: Rodrigo Noronha de Mello 
 site_description: Sistema de Gestão de Estágios e Visitas Técnicas.
 
 repo_name: Intern-Manager
-repo_url: https://github.com/vonroderik/Intern-Manager
+repo_url: https://github.com/mellornm/Intern-Manager
 
 theme:
   name: material

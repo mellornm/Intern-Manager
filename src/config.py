@@ -83,4 +83,4 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 
 # Version
 VERSION = "2.1.0"
-REPO_URL = "https://api.github.com/repos/vonroderik/Intern-Manager/releases/latest"
+REPO_URL = "https://api.github.com/repos/mellornm/Intern-Manager/releases/latest"

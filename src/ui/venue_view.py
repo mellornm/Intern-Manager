@@ -349,7 +349,7 @@ class VenueView(QWidget):
         if self.comm_service:
             self.comm_service.open_whatsapp(
                 v.supervisor_phone,
-                f"Olá {v.supervisor_name or ''}, meu nome é {coordinator_name}. Sou supervisor de estágios na {institution_name}. Gostaria de tratar sobre o(s) estagiário(s) alocado(s) na clínica '{v.venue_name}'. Qual o melhor horário para conversarmos?",
+                f"Olá {v.supervisor_name or ''}, meu nome é {coordinator_name}. Sou supervisor de estágios na {institution_name}, pelo curso de Biomedicina. Gostaria de conversar sobre nosso aluno que está estagiando em sua clínica '{v.venue_name}'. Qual o melhor horário para fazermos uma breve videochamada por Whatsapp?",
             )
         else:
             QMessageBox.critical(self, "Erro", "Serviço de comunicação não disponível.")

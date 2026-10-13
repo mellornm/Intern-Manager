@@ -26,6 +26,7 @@ Attributes:
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 
 
 def get_app_paths() -> tuple[Path, Path]:
@@ -73,14 +74,33 @@ def get_app_paths() -> tuple[Path, Path]:
 # --- Global Configuration ---
 APP_ROOT, USER_DATA_ROOT = get_app_paths()
 
+# Load environment variables from .env if present
+env_file = APP_ROOT / ".env"
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    load_dotenv()
+
 RESOURCES_DIR = APP_ROOT / "resources"
 SQL_PATH = RESOURCES_DIR / "create_db.sql"
 
 DB_DIR = USER_DATA_ROOT
 DB_PATH = DB_DIR / "interns.db"
 
+TEMP_DIR = USER_DATA_ROOT / "temp"
+UPLOADS_DIR = USER_DATA_ROOT / "uploads"
+
 DB_DIR.mkdir(parents=True, exist_ok=True)
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Web Server Configuration
+APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
+APP_PORT = int(os.getenv("APP_PORT", "8096"))
+APP_STORAGE_SECRET = os.getenv("APP_STORAGE_SECRET", "intern-manager-secret-key-change-in-production")
+APP_RELOAD = os.getenv("APP_RELOAD", "false").lower() in ("true", "1", "yes")
 
 # Version
 VERSION = "2.1.0"
 REPO_URL = "https://api.github.com/repos/mellornm/Intern-Manager/releases/latest"
+

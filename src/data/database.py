@@ -29,10 +29,12 @@ class DatabaseManager:
         if self._initialized:
             return
 
-        db_url = f"sqlite:///{DB_PATH}"
+        db_url = f"sqlite:///{DB_PATH.resolve().as_posix()}"
 
         self.engine = create_engine(
-            db_url, connect_args={"check_same_thread": False}, echo=False
+            db_url,
+            connect_args={"check_same_thread": False, "timeout": 30.0},
+            echo=False,
         )
 
         session_factory = sessionmaker(
@@ -43,21 +45,20 @@ class DatabaseManager:
 
         self._setup_listeners()
         self._initialized = True
-        logger.info("Database engine started.")
+        logger.info("Database engine started with WAL and concurrency support.")
 
     def _setup_listeners(self):
         """
-        Inject critical SQLite pragmas on every new connection.
+        Inject critical SQLite pragmas on every new connection for concurrency and integrity.
         """
 
         @event.listens_for(Engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
-
             cursor.execute("PRAGMA foreign_keys=ON")
-
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
             cursor.close()
 
     def get_session(self) -> Session:

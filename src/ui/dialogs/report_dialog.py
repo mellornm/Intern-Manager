@@ -1,270 +1,166 @@
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QFrame,
-    QMessageBox,
-    QFileDialog,
-    QWidget,
-    QProgressBar,
-)
-from PySide6.QtCore import Qt, QSize, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices
-import qtawesome as qta
+"""
+PDF Report generation and download dialog for NiceGUI.
+Uses ReportLab via ReportService and triggers browser download via ui.download().
+"""
 
+import zipfile
+from typing import List
+from nicegui import ui
 
+from config import TEMP_DIR
 from core.models.intern import Intern
-
-# Services imports
-from services.grade_service import GradeService
-from services.evaluation_criteria_service import EvaluationCriteriaService
-from services.report_service import ReportService
-from services.venue_service import VenueService
-from services.document_service import DocumentService
-from services.meeting_service import MeetingService
-from services.observation_service import ObservationService
-
-from ui.styles import COLORS
+from ui.context import ServiceContainer
+from utils.text_utils import sanitize_filename
 
 
-class ReportDialog(QDialog):
-    def __init__(
-        self,
-        parent,
-        intern: Intern,
-        grade_service: GradeService,
-        criteria_service: EvaluationCriteriaService,
-        report_service: ReportService,
-        venue_service: VenueService,
-        document_service: DocumentService,
-        meeting_service: MeetingService,
-        observation_service: ObservationService,
-    ):
-        super().__init__(parent)
-        self.setWindowTitle(f"Gerar Relatório: {intern.name}")
-        self.resize(500, 450)
+def open_report_dialog(
+    intern: Intern,
+    container: ServiceContainer,
+):
+    """Opens modal to preview summary and generate/download an intern's evaluation PDF."""
+    if not intern.intern_id:
+        ui.notify("Aluno sem ID registrado.", color="negative")
+        return
 
-        # Guarda referências
-        self.intern = intern
-        self.grade_service = grade_service
-        self.criteria_service = criteria_service
-        self.report_service = report_service
-        self.venue_service = venue_service
-        self.doc_service = document_service
-        self.meeting_service = meeting_service
-        self.obs_service = observation_service
+    intern_id = intern.intern_id
+    venue = container.venue_service.get_by_id(intern.venue_id) if intern.venue_id else None
+    criteria_list = container.criteria_service.list_active_criteria()
+    grades = container.grade_service.get_by_intern_id(intern_id)
+    documents = container.document_service.get_by_intern_id(intern_id)
+    meetings = container.meeting_service.get_by_intern_id(intern_id)
+    observations = container.observation_service.get_by_intern_id(intern_id)
+    visits = container.visit_service.get_by_intern_id(intern_id)
 
-        # Estilo
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {COLORS["white"]}; }}
-            QLabel {{ color: {COLORS["dark"]}; font-size: 14px; }}
-            QProgressBar {{
-                border: 1px solid {COLORS["border"]};
-                border-radius: 4px;
-                text-align: center;
-                background-color: {COLORS["light"]};
-            }}
-            QProgressBar::chunk {{ background-color: {COLORS["primary"]}; }}
-        """)
+    pending_docs = sum(1 for d in documents if (d.status or "").lower() != "aprovado")
 
-        self._setup_ui()
-        self._load_summary()
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-lg p-6 dialog-card"):
+        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("picture_as_pdf", color="negative", size="md")
+                with ui.column().classes("gap-0"):
+                    ui.label("Gerar Relatório de Estágio").classes("text-xl font-bold text-slate-800")
+                    ui.label(intern.name).classes("text-xs text-slate-500 font-semibold")
+            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(20)
+        with ui.column().classes("w-full gap-3 py-3"):
+            # Summary boxes
+            with ui.card().classes("w-full p-4 bg-slate-50 border border-slate-200 gap-2"):
+                ui.label("RESUMO DE DADOS DO RELATÓRIO").classes("text-xs font-bold text-slate-500")
 
-        # --- Header com Ícone PDF ---
-        header = QHBoxLayout()
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(
-            qta.icon("fa5s.file-pdf", color=COLORS["danger"]).pixmap(QSize(48, 48))
-        )
+                with ui.row().classes("items-center justify-between text-sm"):
+                    ui.label("Critérios / Notas Cadastradas:")
+                    if grades:
+                        ui.badge(f"{len(grades)} notas lançadas", color="green-7")
+                    else:
+                        ui.badge("Sem notas lançadas", color="amber-8")
 
-        title_box = QVBoxLayout()
-        title_box.setSpacing(5)
-        lbl_title = QLabel("Relatório de Estágio")
-        lbl_title.setStyleSheet(
-            f"font-size: 22px; font-weight: 800; color: {COLORS['dark']};"
-        )
-        lbl_sub = QLabel(f"Aluno: {self.intern.name}")
-        lbl_sub.setStyleSheet(f"font-size: 14px; color: {COLORS['secondary']};")
+                with ui.row().classes("items-center justify-between text-sm"):
+                    ui.label("Situação Documental:")
+                    if pending_docs == 0 and documents:
+                        ui.badge("100% Conforme", color="green-7")
+                    else:
+                        ui.badge(f"{pending_docs} pendentes", color="amber-8" if pending_docs else "grey-6")
 
-        title_box.addWidget(lbl_title)
-        title_box.addWidget(lbl_sub)
+                with ui.row().classes("items-center justify-between text-sm"):
+                    ui.label("Encontros de Supervisão:")
+                    ui.badge(f"{len(meetings)} reuniões", color="blue-7")
 
-        header.addWidget(icon_lbl)
-        header.addLayout(title_box)
-        header.addStretch()
-        layout.addLayout(header)
+                with ui.row().classes("items-center justify-between text-sm"):
+                    ui.label("Visitas Técnicas in loco:")
+                    ui.badge(f"{len(visits)} visitas", color="blue-7")
 
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"color: {COLORS['border']}")
-        layout.addWidget(line)
+        def handle_generate_pdf():
+            safe_name = sanitize_filename(intern.name)
+            ra_suffix = f"_{intern.registration_number}" if intern.registration_number else ""
+            pdf_filename = f"Relatorio_{safe_name}{ra_suffix}.pdf"
+            pdf_path = TEMP_DIR / pdf_filename
 
-        # --- Resumo do Conteúdo ---
-        self.info_container = QWidget()
-        info_layout = QVBoxLayout(self.info_container)
-        info_layout.setSpacing(10)
+            try:
+                container.report_service.generate_pdf(
+                    filepath=str(pdf_path),
+                    intern=intern,
+                    venue=venue,
+                    criteria_list=criteria_list,
+                    grades=grades,
+                    documents=documents,
+                    meetings=meetings,
+                    observations=observations,
+                    visits=visits,
+                )
 
-        lbl_info = QLabel("O arquivo PDF conterá:")
-        lbl_info.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
-        info_layout.addWidget(lbl_info)
+                ui.notify("Relatório gerado com sucesso! Iniciando download...", color="positive")
+                ui.download(str(pdf_path), filename=pdf_filename)
+                dialog.close()
+            except Exception as e:
+                ui.notify(f"Erro ao gerar relatório: {e}", color="negative")
 
-        self.lbl_grades = QLabel("⌛ Verificando Notas...")
-        self.lbl_docs = QLabel("⌛ Verificando Documentos...")
-        self.lbl_meetings = QLabel("⌛ Verificando Supervisão...")
+        with ui.row().classes("w-full justify-end gap-2 pt-3 border-t border-slate-200 mt-2"):
+            ui.button("Cancelar", on_click=dialog.close).props("flat color=grey")
+            ui.button("Gerar e Baixar PDF", icon="download", on_click=handle_generate_pdf).props("color=negative")
 
-        info_layout.addWidget(self.lbl_grades)
-        info_layout.addWidget(self.lbl_docs)
-        info_layout.addWidget(self.lbl_meetings)
+    dialog.open()
 
-        layout.addWidget(self.info_container)
-        layout.addStretch()
 
-        self.progress = QProgressBar()
-        self.progress.setVisible(False)
-        layout.addWidget(self.progress)
+def export_batch_reports_zip(
+    intern_ids: List[int],
+    container: ServiceContainer,
+):
+    """
+    Generates PDF evaluation reports for all given intern IDs and packages them into a ZIP file.
+    Triggers client download via ui.download().
+    """
+    if not intern_ids:
+        ui.notify("Nenhum aluno selecionado para emissão de relatórios.", color="warning")
+        return
 
-        # --- Botões ---
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    zip_filename = "Relatorios_Supervisao_Estagio.zip"
+    zip_path = TEMP_DIR / zip_filename
 
-        btn_cancel = QPushButton("Cancelar")
-        btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cancel.setStyleSheet(
-            f"background: transparent; color: {COLORS['secondary']}; border: none; font-weight: 600;"
-        )
-        btn_cancel.clicked.connect(self.reject)
+    generated_count = 0
+    criteria_list = container.criteria_service.list_active_criteria()
 
-        self.btn_generate = QPushButton(" Gerar PDF Agora")
-        self.btn_generate.setIcon(qta.icon("fa5s.download", color="white"))
-        self.btn_generate.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_generate.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["success"]}; color: white; border: none; 
-                padding: 12px 25px; border-radius: 6px; font-weight: bold; font-size: 14px;
-            }}
-            QPushButton:hover {{ background-color: #0E6A0E; }}
-        """)
-        self.btn_generate.clicked.connect(self.generate_report)
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for intern_id in intern_ids:
+                intern = container.intern_service.get_by_id(intern_id)
+                if not intern:
+                    continue
 
-        btn_layout.addWidget(btn_cancel)
-        btn_layout.addWidget(self.btn_generate)
-        layout.addLayout(btn_layout)
+                venue = container.venue_service.get_by_id(intern.venue_id) if intern.venue_id else None
+                grades = container.grade_service.get_by_intern_id(intern_id)
+                documents = container.document_service.get_by_intern_id(intern_id)
+                meetings = container.meeting_service.get_by_intern_id(intern_id)
+                observations = container.observation_service.get_by_intern_id(intern_id)
+                visits = container.visit_service.get_by_intern_id(intern_id)
 
-    def _load_summary(self):
-        if self.intern.intern_id is None:
-            self.lbl_grades.setText("Erro: Aluno não salvo no banco de dados.")
-            return
+                safe_name = sanitize_filename(intern.name)
+                ra_suffix = f"_{intern.registration_number}" if intern.registration_number else ""
+                pdf_name = f"Relatorio_{safe_name}{ra_suffix}.pdf"
+                pdf_temp = TEMP_DIR / pdf_name
 
-        intern_id = self.intern.intern_id
+                container.report_service.generate_pdf(
+                    filepath=str(pdf_temp),
+                    intern=intern,
+                    venue=venue,
+                    criteria_list=criteria_list,
+                    grades=grades,
+                    documents=documents,
+                    meetings=meetings,
+                    observations=observations,
+                    visits=visits,
+                )
 
-        # 1. Notas
-        grades = self.grade_service.get_by_intern_id(intern_id)
-        if grades:
-            avg = sum(g.value for g in grades)
-            self.lbl_grades.setText(
-                f"✅ {len(grades)} Notas lançadas (Soma: {avg:.1f})"
-            )
-            self.lbl_grades.setStyleSheet(f"color: {COLORS['success']};")
+                if pdf_temp.exists():
+                    zip_file.write(pdf_temp, arcname=pdf_name)
+                    generated_count += 1
+                    pdf_temp.unlink(missing_ok=True)
+
+        if generated_count > 0:
+            ui.notify(f"{generated_count} relatórios empacotados com sucesso! Baixando arquivo ZIP...", color="positive")
+            ui.download(str(zip_path), filename=zip_filename)
         else:
-            self.lbl_grades.setText("⚠️ Nenhuma nota lançada (Relatório sairá zerado)")
-            self.lbl_grades.setStyleSheet(f"color: {COLORS['warning']};")
+            ui.notify("Nenhum relatório foi gerado.", color="warning")
 
-        # 2. Documentos
-        docs = self.doc_service.get_by_intern_id(intern_id)
-        # CORREÇÃO DE LÓGICA: Considera pendente tudo que não for "Aprovado"
-        pending = sum(1 for d in docs if d.status != "Aprovado")
-
-        if pending > 0:
-            self.lbl_docs.setText(f"⚠️ {pending} Documentos pendentes de aprovação")
-            self.lbl_docs.setStyleSheet(f"color: {COLORS['warning']};")
-        else:
-            self.lbl_docs.setText(f"✅ {len(docs)} Documentos verificados")
-            self.lbl_docs.setStyleSheet(f"color: {COLORS['success']};")
-
-        # 3. Meetings
-        meetings = self.meeting_service.get_by_intern_id(intern_id)
-        self.lbl_meetings.setText(f"📅 {len(meetings)} Registros de supervisão")
-
-    def generate_report(self):
-        if self.intern.intern_id is None:
-            QMessageBox.warning(
-                self,
-                "Erro",
-                "Este aluno ainda não foi salvo. Salve antes de gerar relatório.",
-            )
-            return
-
-        filename = f"Relatorio_{self.intern.name.replace(' ', '_')}.pdf"
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Salvar Relatório PDF", filename, "PDF Files (*.pdf)"
-        )
-
-        if not path:
-            return
-
-        self.btn_generate.setEnabled(False)
-        self.btn_generate.setText("Gerando...")
-        self.progress.setVisible(True)
-        self.progress.setValue(20)
-
-        QTimer.singleShot(100, lambda: self._process_generation(path))
-
-    def _process_generation(self, path):
-        try:
-            if self.intern.intern_id is None:
-                raise ValueError("ID do aluno inválido.")
-
-            intern_id = self.intern.intern_id
-            self.progress.setValue(40)
-
-            venue = None
-            if self.intern.venue_id:
-                venue = self.venue_service.get_by_id(self.intern.venue_id)
-
-            all_criteria = self.criteria_service.list_active_criteria()
-            grades = self.grade_service.get_by_intern_id(intern_id)
-            documents = self.doc_service.get_by_intern_id(intern_id)
-            meetings = self.meeting_service.get_by_intern_id(intern_id)
-            observations = self.obs_service.get_by_intern_id(intern_id)
-
-            self.progress.setValue(70)
-
-            self.report_service.generate_pdf(
-                filepath=path,
-                intern=self.intern,
-                venue=venue,
-                criteria_list=all_criteria,
-                grades=grades,
-                documents=documents,
-                meetings=meetings,
-                observations=observations,
-            )
-
-            self.progress.setValue(100)
-            reply = QMessageBox.question(
-                self,
-                "Sucesso",
-                "Relatório gerado com sucesso!\n\nDeseja abrir o arquivo agora?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-
-            if reply == QMessageBox.StandardButton.Yes:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(path))
-            # --------------------------------------------
-
-            self.accept()
-
-        except Exception as e:
-            self.progress.setVisible(False)
-            self.btn_generate.setEnabled(True)
-            self.btn_generate.setText("Tentar Novamente")
-            QMessageBox.critical(
-                self, "Erro Fatal", f"Não foi possível gerar o PDF.\nErro: {e}"
-            )
+    except Exception as e:
+        ui.notify(f"Erro ao gerar relatórios em lote: {e}", color="negative")

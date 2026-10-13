@@ -1,210 +1,138 @@
 """
-Application entry point and startup configuration.
+Application entry point and startup configuration for InternManager Pro Web.
 
-This script initializes the application's components, including the database,
-service layer, and user interface using SQLAlchemy 2.0.
+Initializes the database, runs migrations, seeds initial data, wires dependency injection,
+and launches the NiceGUI web server.
 """
 
-import sys
 import logging
-import ctypes
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import QTimer
-from ui.main_window import MainWindow
-
-from data.database import db_manager
-
-# Repositories
-from repository.document_repo import DocumentRepository
-from repository.evaluation_criteria_repo import EvaluationCriteriaRepository
-from repository.grade_repo import GradeRepository
-from repository.intern_repo import InternRepository
-from repository.meeting_repo import MeetingRepository
-from repository.observation_repo import ObservationRepository
-from repository.venue_repo import VenueRepository
-from repository.visit_repo import VisitRepository
-
-
-# Services
-from services.document_service import DocumentService
-from services.evaluation_criteria_service import EvaluationCriteriaService
-from services.export_service import ExportService
-from services.grade_service import GradeService
-from services.import_service import ImportService
-from services.intern_service import InternService
-from services.meeting_service import MeetingService
-from services.observation_service import ObservationService
-from services.report_service import ReportService
-from services.update_service import check_for_updates
-from services.venue_service import VenueService
-from services.visit_service import VisitService
-from services.communication_service import CommunicationService
-
-
-# Utils
-from utils.seeder import seed_default_criteria
-from services.migration_service import MigrationService
-
+from nicegui import app, ui
 
 # Config
-from config import DB_DIR
+from config import (
+    APP_HOST,
+    APP_PORT,
+    APP_RELOAD,
+    APP_STORAGE_SECRET,
+    DB_DIR,
+    RESOURCES_DIR,
+    UPLOADS_DIR,
+    USER_DATA_ROOT,
+    VERSION,
+)
+from data.database import db_manager
+from services.migration_service import MigrationService
+from ui.context import get_container
+from ui.routes import register_routes
+from utils.seeder import seed_default_criteria
+
+logger = logging.getLogger("intern_manager")
+
+
+def get_csv_path() -> Optional[Path]:
+    """Finds path to a CSV file for automatic import if present."""
+    imports_dir = DB_DIR / "imports"
+    if not imports_dir.exists():
+        return None
+
+    csv_files = list(imports_dir.glob("*.csv"))
+    if not csv_files:
+        return None
+
+    if len(csv_files) > 1:
+        logger.warning("Múltiplos CSVs encontrados. Usando %s", csv_files[0].name)
+
+    return csv_files[0]
+
+
+def startup_system():
+    """Bootstraps database, runs migrations, seeds criteria and consistency checks."""
+    logger.info("=== SYSTEM STARTUP (InternManager Web NiceGUI) ===")
+
+    # 1. Run database migrations
+    try:
+        MigrationService.run_auto_migration()
+        logger.info("Database migrations executed successfully.")
+    except Exception as e:
+        logger.error("Failed to execute database migrations: %s", e)
+
+    # 2. Bootstrap tables if needed
+    try:
+        db_manager.create_tables()
+        logger.info("Database tables verified/created.")
+    except Exception as e:
+        logger.critical("Failed to initialize database: %s", e)
+        raise e
+
+    # 3. Initialize pure dependency injection container
+    container = get_container()
+    logger.info("Service container initialized.")
+
+    # 4. Seed default evaluation criteria
+    try:
+        seed_default_criteria(container.criteria_service)
+        logger.info("Default evaluation criteria seeded.")
+    except Exception as e:
+        logger.warning("Failed to seed default criteria: %s", e)
+
+    # 5. Check for automatic CSV import in imports folder
+    csv_path = get_csv_path()
+    if csv_path:
+        try:
+            container.import_service.read_file(csv_path)
+            logger.info("Auto-imported CSV file: %s", csv_path.name)
+        except Exception as e:
+            logger.error("Failed to process auto-import CSV: %s", e)
+
+    # 6. Ensure document consistency for all interns
+    try:
+        all_interns = container.intern_service.get_all_interns()
+        for intern in all_interns:
+            if intern.intern_id:
+                container.document_service.create_initial_documents_batch(intern.intern_id)
+        logger.info("Document consistency check complete.")
+    except Exception as e:
+        logger.warning("Document consistency check warning: %s", e)
+
+    # 7. Static file directories
+    photos_dir = USER_DATA_ROOT / "photos"
+    photos_dir.mkdir(parents=True, exist_ok=True)
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+    app.add_static_files("/photos", str(photos_dir))
+    app.add_static_files("/uploads", str(UPLOADS_DIR))
+
+    # 8. Register all Web routes
+    register_routes()
 
 
 def main():
-    """
-    Initializes and runs the Intern Manager application.
-
-    This function serves as the main entry point using SQLAlchemy for data access.
-    """
-    myappid = "mycompany.internmanager.pro.2026"
-    if sys.platform == "win32":
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
+    """Main execution function."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    app = QApplication(sys.argv)
+    startup_system()
 
-    try:
-        MigrationService.run_auto_migration()
-    except Exception as e:
-        QMessageBox.critical(
-            None,
-            "Database Error",
-            f"Failed to migrate database: {str(e)}\n The app will close to prevent dat loss.",
-        )
+    favicon_path = RESOURCES_DIR / "app_icon.ico"
+    favicon = str(favicon_path) if favicon_path.exists() else None
 
-    print("\n=== SYSTEM STARTUP (SQLAlchemy 2.0) ===\n")
+    logger.info("Launching NiceGUI Web Server on http://%s:%d", APP_HOST, APP_PORT)
 
-    print("INITIALIZING DATABASE")
-    try:
-        # Bootstrap tables if they don't exist
-        db_manager.create_tables()
-        print("   -> Database ready\n")
-    except Exception as e:
-        print(f"CRITICAL ERROR: Failed to initialize database. Details: {e}\n")
-        QMessageBox.critical(
-            None, "Erro Fatal", f"Falha ao inicializar banco de dados:\n{e}"
-        )
-        return
-
-    print("INITIALIZING SERVICES")
-    try:
-        # Initialize repositories (they use db_manager.get_session internally)
-        repo_venue = VenueRepository()
-        repo_intern = InternRepository()
-        repo_doc = DocumentRepository()
-        repo_obs = ObservationRepository()
-        repo_criteria = EvaluationCriteriaRepository()
-        repo_grade = GradeRepository()
-        repo_meeting = MeetingRepository()
-        repo_visit = VisitRepository()
-
-        # Initialize services
-        v_service = VenueService(repo_venue)
-        i_service = InternService(repo_intern)
-        d_service = DocumentService(repo_doc)
-        obs_service = ObservationService(repo_obs)
-        m_service = MeetingService(repo_meeting)
-        vis_service = VisitService(repo_visit)
-        criteria_service = EvaluationCriteriaService(repo_criteria)
-        grade_service = GradeService(repo=repo_grade, criteria_repo=repo_criteria)
-        report_service = ReportService()
-        comm_service = CommunicationService()
-
-        imp_service = ImportService(
-            intern_service=i_service,
-            venue_service=v_service,
-            document_service=d_service,
-        )
-
-        # ExportService now uses SQLAlchemy engine
-        export_service = ExportService()
-
-        print("   -> Services initialized successfully\n")
-    except Exception as e:
-        print(f"CRITICAL ERROR: Failed to initialize services. Details: {e}\n")
-        QMessageBox.critical(
-            None, "Erro Fatal", f"Falha ao carregar componentes do sistema:\n{e}"
-        )
-        return
-
-    # Populate the database with default evaluation criteria if it's a fresh setup.
-    try:
-        seed_default_criteria(criteria_service)
-    except Exception as e:
-        print(f"WARNING: Failed to seed default criteria. Details: {e}\n")
-
-    print("CHECKING FOR CSV IMPORT...")
-    csv_path = get_csv_path()
-
-    if csv_path:
-        try:
-            imp_service.read_file(csv_path)
-            print(f"   -> Successfully imported: {csv_path.name}")
-        except Exception as e:
-            print(f"ERROR: Failed to process import file. Details: {e}\n")
-    else:
-        print("   -> No CSV found or ignored. Starting with current database.\n")
-
-    print("LAUNCHING GUI...")
-
-    # Ensure all existing interns have their document tracking initialized
-    try:
-        all_interns = i_service.get_all_interns()
-        for intern in all_interns:
-            if intern.intern_id:
-                d_service.create_initial_documents_batch(intern.intern_id)
-    except Exception as e:
-        print(f"WARNING: Consistency check failed: {e}")
-
-    window = MainWindow(
-        intern_service=i_service,
-        criteria_service=criteria_service,
-        grade_service=grade_service,
-        observation_service=obs_service,
-        venue_service=v_service,
-        document_service=d_service,
-        meeting_service=m_service,
-        visit_service=vis_service,
-        report_service=report_service,
-        import_service=imp_service,
-        export_service=export_service,
-        communication_service=comm_service,
+    ui.run(
+        host=APP_HOST,
+        port=APP_PORT,
+        title=f"InternManager Pro v{VERSION}",
+        favicon=favicon,
+        storage_secret=APP_STORAGE_SECRET,
+        reload=APP_RELOAD,
+        show=False,  # Don't auto-open browser on headless server
     )
 
-    window.show()
-    QTimer.singleShot(2000, lambda: check_for_updates(window))
 
-    print("\n=== SYSTEM RUNNING (GUI) ===")
-
-    sys.exit(app.exec())
-
-
-def get_csv_path() -> Optional[Path]:
-    """
-    Finds the path to a CSV file for automatic import.
-    """
-    imports_dir = DB_DIR / "imports"
-
-    if not imports_dir.exists():
-        return None
-
-    csv_files = list(imports_dir.glob("*.csv"))
-
-    if not csv_files:
-        return None
-
-    if len(csv_files) > 1:
-        print(f"WARNING: Múltiplos CSVs encontrados. Usando {csv_files[0].name}")
-
-    return csv_files[0]
-
-
-if __name__ == "__main__":
+if __name__ in {"__main__", "__mp_main__"}:
     main()

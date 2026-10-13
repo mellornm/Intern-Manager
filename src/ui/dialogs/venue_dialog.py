@@ -1,219 +1,86 @@
-from typing import Optional
+"""
+Venue Add/Edit Dialog for NiceGUI.
+"""
 
-import qtawesome as qta
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import (
-    QDialog,
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from typing import Callable, Optional
+from nicegui import ui
 
 from core.models.venue import Venue
-from ui.styles import COLORS
+from services.venue_service import VenueService
 
 
-class VenueDialog(QDialog):
-    def __init__(self, parent=None, venue: Optional[Venue] = None):
-        super().__init__(parent)
-        self.venue = venue
-        self.setWindowTitle("Gerenciar Local")
-        self.setMinimumWidth(500)
+def open_venue_dialog(
+    venue_service: VenueService,
+    venue: Optional[Venue] = None,
+    on_success: Optional[Callable] = None,
+):
+    """Opens modal to add or edit an internship venue."""
+    is_edit = venue is not None
+    dialog_title = "Editar Local de Estágio" if is_edit else "Novo Local de Estágio"
 
-        # Estilo CSS Limpo
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {COLORS["white"]}; }}
-            
-            QLabel {{ 
-                color: {COLORS["medium"]}; 
-                font-size: 12px; 
-                font-weight: bold; 
-                margin-top: 5px;
-            }}
-            
-            QLineEdit {{
-                background-color: {COLORS["light"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 6px;
-                padding: 10px;
-                font-size: 14px;
-                color: {COLORS["dark"]};
-            }}
-            QLineEdit:focus {{ 
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["primary"]}; 
-            }}
-        """)
+    init_name = venue.venue_name if is_edit else ""
+    init_address = venue.address if is_edit else ""
+    init_supervisor = venue.supervisor_name if is_edit else ""
+    init_phone = venue.supervisor_phone if is_edit else ""
+    init_email = venue.supervisor_email if is_edit else ""
 
-        self._setup_ui()
-        if self.venue:
-            self._load_data()
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-lg p-6 dialog-card"):
+        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("location_on", color="primary", size="md")
+                ui.label(dialog_title).classes("text-xl font-bold text-slate-800")
+            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
+        with ui.column().classes("w-full gap-3 pt-2"):
+            name_input = ui.input("Nome da Instituição / Empresa *", value=init_name).classes("w-full")
+            address_input = ui.input("Endereço Completo", value=init_address).classes("w-full")
 
-        # --- 1. Cabeçalho ---
-        header = QHBoxLayout()
+            supervisor_input = ui.input("Supervisor / Responsável", value=init_supervisor).classes("w-full")
 
-        # Ícone Grande
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(
-            qta.icon("fa5s.hospital-alt", color=COLORS["primary"]).pixmap(QSize(32, 32))
-        )
-        header.addWidget(icon_lbl)
+            with ui.grid(columns=2).classes("w-full gap-3"):
+                phone_input = ui.input("Telefone do Supervisor", value=init_phone, placeholder="Ex: 11999998888").classes("w-full")
+                email_input = ui.input("E-mail do Supervisor", value=init_email).classes("w-full")
 
-        # Textos
-        title_box = QVBoxLayout()
-        title_box.setSpacing(2)
-        lbl_title = QLabel("Dados do Local")
-        lbl_title.setStyleSheet(f"font-size: 18px; color: {COLORS['dark']}; margin: 0;")
-        lbl_sub = QLabel("Cadastre hospitais, clínicas ou laboratórios parceiros.")
-        lbl_sub.setStyleSheet(
-            f"font-size: 12px; color: {COLORS['secondary']}; font-weight: normal; margin: 0;"
-        )
-
-        title_box.addWidget(lbl_title)
-        title_box.addWidget(lbl_sub)
-        header.addLayout(title_box)
-        header.addStretch()
-
-        layout.addLayout(header)
-
-        # Linha Divisória
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"color: {COLORS['border']};")
-        layout.addWidget(line)
-
-        # --- 2. Campos (Grid Layout para organização) ---
-        # Usaremos um Container Widget para os campos
-        fields_widget = QWidget()
-        glayout = QGridLayout(fields_widget)
-        glayout.setSpacing(15)
-        glayout.setContentsMargins(0, 0, 0, 0)
-
-        # -- Nome do Local (Largura Total) --
-        self.txt_name = QLineEdit()
-        self.txt_name.setPlaceholderText("Ex: Hospital Santa Casa")
-        glayout.addWidget(
-            QLabel("Nome do Local *"), 0, 0, 1, 2
-        )  # Linha 0, Col 0, Ocupa 1 linha, 2 colunas
-        glayout.addWidget(self.txt_name, 1, 0, 1, 2)
-
-        # -- Endereço (Largura Total) --
-        self.txt_address = QLineEdit()
-        self.txt_address.setPlaceholderText("Rua, Número, Bairro...")
-        glayout.addWidget(QLabel("Endereço Completo"), 2, 0, 1, 2)
-        glayout.addWidget(self.txt_address, 3, 0, 1, 2)
-
-        # -- Supervisor --
-        self.txt_supervisor = QLineEdit()
-        glayout.addWidget(QLabel("Nome do Supervisor"), 4, 0, 1, 2)
-        glayout.addWidget(self.txt_supervisor, 5, 0, 1, 2)
-
-        # -- Email (Coluna 1) e Telefone (Coluna 2) --
-        self.txt_email = QLineEdit()
-        self.txt_email.setPlaceholderText("email@exemplo.com")
-
-        self.txt_phone = QLineEdit()
-        self.txt_phone.setPlaceholderText("(00) 00000-0000")
-
-        glayout.addWidget(QLabel("E-mail de Contato"), 6, 0)
-        glayout.addWidget(self.txt_email, 7, 0)
-
-        glayout.addWidget(QLabel("Telefone"), 6, 1)
-        glayout.addWidget(self.txt_phone, 7, 1)
-
-        layout.addWidget(fields_widget)
-        layout.addStretch()  # Empurra tudo para cima
-
-        # --- 3. Botões ---
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
-        btn_layout.addStretch()
-
-        self.btn_cancel = QPushButton("Cancelar")
-        self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cancel.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["light"]};
-                color: {COLORS["medium"]};
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-weight: 600;
-            }}
-            QPushButton:hover {{ background-color: #E1DFDD; color: {COLORS["dark"]}; }}
-        """)
-        self.btn_cancel.clicked.connect(self.reject)
-
-        self.btn_save = QPushButton("Salvar Local")
-        self.btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_save.setIcon(qta.icon("fa5s.check", color="white"))
-        self.btn_save.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["primary"]};
-                color: white;
-                border: none;
-                padding: 10px 25px;
-                border-radius: 6px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
-        """)
-        self.btn_save.clicked.connect(self.validate_and_accept)
-
-        btn_layout.addWidget(self.btn_cancel)
-        btn_layout.addWidget(self.btn_save)
-        layout.addLayout(btn_layout)
-
-    def _load_data(self):
-        if not self.venue:
-            return
-        self.txt_name.setText(self.venue.venue_name)
-        self.txt_address.setText(self.venue.address or "")
-        self.txt_supervisor.setText(self.venue.supervisor_name or "")
-        self.txt_email.setText(self.venue.supervisor_email or "")
-        self.txt_phone.setText(self.venue.supervisor_phone or "")
-
-    def validate_and_accept(self):
-        from PySide6.QtWidgets import QMessageBox
-        from utils.validations import validate_email_format
-
-        name = self.txt_name.text().strip()
-        email = self.txt_email.text().strip()
-
-        if not name:
-            QMessageBox.warning(
-                self, "Campo Obrigatório", "Por favor, informe o Nome do Local."
-            )
-            self.txt_name.setFocus()
-            return
-
-        if email:
-            try:
-                validate_email_format(email)
-            except ValueError as e:
-                QMessageBox.warning(self, "E-mail Inválido", str(e))
-                self.txt_email.setFocus()
+        def handle_save():
+            name = (name_input.value or "").strip()
+            if not name:
+                ui.notify("O nome do local é obrigatório.", color="negative")
                 return
 
-        self.accept()
+            if is_edit and venue:
+                venue.venue_name = name
+                venue.address = address_input.value or ""
+                venue.supervisor_name = supervisor_input.value or ""
+                venue.supervisor_phone = phone_input.value or ""
+                venue.supervisor_email = email_input.value or ""
 
-    def get_data(self) -> Venue:
-        v_id = self.venue.venue_id if self.venue else None
-        return Venue(
-            venue_id=v_id,
-            venue_name=self.txt_name.text().strip(),
-            address=self.txt_address.text().strip() or None,
-            supervisor_name=self.txt_supervisor.text().strip() or None,
-            supervisor_email=self.txt_email.text().strip() or None,
-            supervisor_phone=self.txt_phone.text().strip() or None,
-        )
+                try:
+                    venue_service.update_venue(venue)
+                    ui.notify("Local de estágio atualizado com sucesso!", color="positive")
+                    dialog.close()
+                    if on_success:
+                        on_success()
+                except Exception as e:
+                    ui.notify(f"Erro ao atualizar: {e}", color="negative")
+            else:
+                new_venue = Venue(
+                    venue_name=name,
+                    address=address_input.value or "",
+                    supervisor_name=supervisor_input.value or "",
+                    supervisor_phone=phone_input.value or "",
+                    supervisor_email=email_input.value or "",
+                )
+                try:
+                    venue_service.add_new_venue(new_venue)
+                    ui.notify(f"Local '{name}' cadastrado com sucesso!", color="positive")
+                    dialog.close()
+                    if on_success:
+                        on_success()
+                except Exception as e:
+                    ui.notify(f"Erro ao salvar local: {e}", color="negative")
+
+        with ui.row().classes("w-full justify-end gap-2 pt-4 border-t border-slate-200 mt-2"):
+            ui.button("Cancelar", on_click=dialog.close).props("flat color=grey")
+            ui.button("Salvar Local", icon="check", on_click=handle_save).props("color=primary")
+
+    dialog.open()

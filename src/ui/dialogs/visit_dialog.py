@@ -1,460 +1,182 @@
-import os
+"""
+Technical Visits dialog for NiceGUI with photo upload and preview.
+"""
 
-import qtawesome as qta
-from PySide6.QtCore import QDate, QSize, Qt, QUrl
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QComboBox,
-    QDateEdit,
-    QDialog,
-    QFileDialog,
-    QFrame,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-)
+from datetime import date
+from typing import Callable, Optional
+from nicegui import ui
 
-from config import USER_DATA_ROOT
+from config import USER_DATA_ROOT, TEMP_DIR
 from core.models.intern import Intern
 from core.models.visit import Visit
 from services.venue_service import VenueService
 from services.visit_service import VisitService
-from ui.styles import COLORS
 
 
-class VisitDialog(QDialog):
-    """
-
-    Dialog for managing intern supervision visits.
-
-    Provides an interface to list, register, delete, and view visit photos.
-    Integrates with VisitService (persistence, photo saving) and VenueService (list of locations).
-
-    Main responsibilities:
-        - Load available locations (load_venues).
-        - Load and display intern visits (load_data).
-        - Select and attach a photo to a visit (select_photo).
-        - Create a new visit with the option to save a photo (add_visit).
-        - Delete a selected visit (delete_visit).
-        - Open photo in the system viewer (view_photo).
-
-    Attributes:
-
-        intern (Intern): Intern related to visits.
-        service (VisitService): Service responsible for visit operations.
-        venue_service (VenueService): Service to obtain locations.
-        selected_photo_path (Optional[str]): Temporary path of the photo selected by the user.
-        table (QTableWidget): Widget that lists the visits.
-
-    """
-
-    def __init__(
-        self,
-        parent,
-        intern: Intern,
-        service: VisitService,
-        venue_service: VenueService,
-    ):
-        super().__init__(parent)
-        self.intern = intern
-        self.service = service
-        self.venue_service = venue_service
-        self.selected_photo_path = None
-
-        self.setWindowTitle(f"Visitas Técnicas: {self.intern.name}")
-        self.resize(750, 600)
-
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {COLORS["light"]}; }}
-            
-            QTableWidget {{ 
-                background-color: {COLORS["white"]}; 
-                border-radius: 8px; 
-                border: 1px solid {COLORS["border"]};
-                selection-background-color: #E3F2FD;
-                selection-color: {COLORS["dark"]};
-            }}
-            
-            QHeaderView::section {{
-                background-color: {COLORS["white"]};
-                color: {COLORS["medium"]};
-                padding: 8px;
-                border: none;
-                border-bottom: 2px solid {COLORS["light"]};
-                font-weight: bold;
-            }}
-
-            QCalendarWidget QWidget {{
-                background-color: {COLORS["white"]};
-                color: {COLORS["dark"]};
-                alternate-background-color: #FAFAFA;
-            }}
-            QCalendarWidget QToolButton {{
-                color: {COLORS["dark"]};
-                background-color: transparent;
-                icon-size: 24px;
-            }}
-            QCalendarWidget QToolButton::menu-indicator {{ image: none; }}
-            QCalendarWidget QSpinBox {{
-                background-color: {COLORS["white"]};
-                color: {COLORS["dark"]};
-                selection-background-color: {COLORS["primary"]};
-                selection-color: white;
-            }}
-            
-            QLineEdit, QComboBox, QDateEdit {{
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 4px;
-                padding: 6px;
-                min-height: 25px;
-            }}
-            
-            QLabel {{ color: {COLORS["dark"]}; }}
-        """)
-
-        self._setup_ui()
-        self.load_venues()
-        self.load_data()
-
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
-
-        header = QHBoxLayout()
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(
-            qta.icon("fa5s.map-marked-alt", color=COLORS["primary"]).pixmap(
-                QSize(32, 32)
-            )
-        )
-
-        title_box = QVBoxLayout()
-        title_box.setSpacing(2)
-        lbl_title = QLabel("Visitas de Supervisão")
-        lbl_title.setStyleSheet(
-            f"font-size: 18px; font-weight: bold; color: {COLORS['dark']};"
-        )
-        lbl_sub = QLabel(f"Estagiário: {self.intern.name}")
-        lbl_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['secondary']};")
-
-        title_box.addWidget(lbl_title)
-        title_box.addWidget(lbl_sub)
-
-        header.addWidget(icon_lbl)
-        header.addLayout(title_box)
-        header.addStretch()
-        layout.addLayout(header)
-
-        input_frame = QFrame()
-        input_frame.setStyleSheet(
-            f"background-color: {COLORS['white']}; border-radius: 8px; border: 1px solid {COLORS['border']};"
-        )
-        form_layout = QVBoxLayout(input_frame)
-        form_layout.setContentsMargins(15, 15, 15, 15)
-        form_layout.setSpacing(10)
-
-        row1 = QHBoxLayout()
-
-        self.date_edit = QDateEdit()
-        self.date_edit.setCalendarPopup(True)
-        self.date_edit.setDate(QDate.currentDate())
-        self.date_edit.setDisplayFormat("dd/MM/yyyy")
-        self.date_edit.setFixedWidth(120)
-
-        self.combo_venue = QComboBox()
-        self.combo_venue.setPlaceholderText("Selecione o Local...")
-
-        row1.addWidget(QLabel("Data:"))
-        row1.addWidget(self.date_edit)
-        row1.addSpacing(20)
-        row1.addWidget(QLabel("Local da Visita:"))
-        row1.addWidget(self.combo_venue, stretch=1)
-
-        form_layout.addLayout(row1)
-
-        row2 = QHBoxLayout()
-        self.txt_obs = QLineEdit()
-        self.txt_obs.setPlaceholderText("Observações sobre a visita (opcional)...")
-        row2.addWidget(QLabel("Obs:"))
-        row2.addWidget(self.txt_obs)
-        form_layout.addLayout(row2)
-
-        row3 = QHBoxLayout()
-
-        self.btn_photo = QPushButton(" Anexar Foto")
-        self.btn_photo.setIcon(qta.icon("fa5s.camera", color=COLORS["medium"]))
-        self.btn_photo.setStyleSheet(f"""
-            QPushButton {{ background-color: {COLORS["light"]}; border: 1px solid {COLORS["border"]}; color: {COLORS["dark"]}; padding: 6px 12px; border-radius: 4px; }}
-            QPushButton:hover {{ background-color: #E0E0E0; }}
-        """)
-        self.btn_photo.clicked.connect(self.select_photo)
-
-        self.lbl_photo_status = QLabel("Nenhuma foto selecionada")
-        self.lbl_photo_status.setStyleSheet(
-            f"color: {COLORS['secondary']}; font-style: italic; font-size: 11px;"
-        )
-
-        self.btn_add = QPushButton(" Registrar Visita")
-        self.btn_add.setIcon(qta.icon("fa5s.check", color="white"))
-        self.btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_add.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["primary"]}; color: white; border: none; 
-                padding: 8px 20px; border-radius: 6px; font-weight: bold;
-            }}
-            QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
-        """)
-        self.btn_add.clicked.connect(self.add_visit)
-
-        row3.addWidget(self.btn_photo)
-        row3.addWidget(self.lbl_photo_status)
-        row3.addStretch()
-        row3.addWidget(self.btn_add)
-
-        form_layout.addLayout(row3)
-        layout.addWidget(input_frame)
-
-        self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(
-            ["ID", "Data", "Local", "Observação", "Foto"]
-        )
-        self.table.setColumnHidden(0, True)
-
-        self.table.setShowGrid(True)
-        self.table.setStyleSheet(f"""
-            QTableWidget {{ 
-                background-color: {COLORS["white"]};
-                gridline-color: #E0E0E0; /* Linha cinza suave */
-                border-radius: 8px; 
-                border: 1px solid {COLORS["border"]};
-                selection-background-color: #E3F2FD;
-                selection-color: {COLORS["dark"]};
-            }}
-        """)
-
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
-        self.table.setColumnWidth(2, 180)
-
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(4, 60)
-
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.setShowGrid(False)
-        self.table.verticalHeader().setVisible(False)
-        self.table.setAlternatingRowColors(True)
-
-        self.table.doubleClicked.connect(self.view_photo)
-
-        layout.addWidget(self.table)
-
-        # --- Footer ---
-        footer = QHBoxLayout()
-        btn_del = QPushButton(" Excluir Selecionada")
-        btn_del.setIcon(qta.icon("fa5s.trash-alt", color=COLORS["danger"]))
-        btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_del.setStyleSheet(
-            f"background: transparent; color: {COLORS['danger']}; border: none; font-weight: 600;"
-        )
-        btn_del.clicked.connect(self.delete_visit)
-
-        btn_close = QPushButton("Fechar")
-        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_close.setStyleSheet(
-            f"background: transparent; color: {COLORS['secondary']}; border: none;"
-        )
-        btn_close.clicked.connect(self.accept)
-
-        footer.addWidget(btn_del)
-        footer.addStretch()
-        footer.addWidget(btn_close)
-
-        layout.addLayout(footer)
-
-    def load_venues(self):
-        """Carrega os locais no ComboBox e seleciona o do aluno."""
-        self.combo_venue.clear()
-        venues = self.venue_service.get_all()
-
-        for v in venues:
-            self.combo_venue.addItem(v.venue_name, int(v.venue_id))
-
-        if self.intern.venue_id and int(self.intern.venue_id) > 0:
-            target_id = int(self.intern.venue_id)
-
-            idx = self.combo_venue.findData(target_id)
-
-            if idx >= 0:
-                self.combo_venue.setCurrentIndex(idx)
-            else:
-                print(f"Aviso: Local ID {target_id} não encontrado na lista.")
-
-    def load_data(self):
-        if not self.intern.intern_id:
-            return
-
-        visits = self.service.get_by_intern_id(self.intern.intern_id)
-
-        all_venues = self.venue_service.get_all()
-        venue_map = {v.venue_id: v.venue_name for v in all_venues}
-
-        self.table.setRowCount(0)
-        for row, v in enumerate(visits):
-            self.table.insertRow(row)
-            self.table.setRowHeight(row, 45)
-
-            self.table.setItem(row, 0, QTableWidgetItem(str(v.visit_id)))
-
-            try:
-                d_obj = QDate.fromString(v.visit_date, "yyyy-MM-dd")
-                date_str = d_obj.toString("dd/MM/yyyy")
-            except Exception:
-                date_str = v.visit_date
-
-            item_date = QTableWidgetItem(date_str)
-            item_date.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 1, item_date)
-
-            # 2: Local
-            venue_name = venue_map.get(v.venue_id, "Desconhecido")
-            self.table.setItem(row, 2, QTableWidgetItem(venue_name))
-
-            # 3: Observação
-            self.table.setItem(row, 3, QTableWidgetItem(v.observation or "-"))
-
-            # 4: Ícone da Foto
-            photo_item = QTableWidgetItem()
-            photo_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            if v.photo_path:
-                # Ícone de Câmera Azul se tiver foto
-                icon = qta.icon("fa5s.image", color=COLORS["primary"])
-                photo_item.setIcon(icon)
-                photo_item.setToolTip(f"Duplo clique para abrir: {v.photo_path}")
-                photo_item.setData(Qt.ItemDataRole.UserRole, v.photo_path)
-            else:
-                # Ícone cinza claro se não tiver
-                icon = qta.icon("fa5s.ban", color="#E0E0E0")
-                photo_item.setIcon(icon)
-                photo_item.setToolTip("Sem foto")
-
-            self.table.setItem(row, 4, photo_item)
-
-    def select_photo(self):
-        """Abre seletor de arquivos."""
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Selecionar Foto", "", "Imagens (*.png *.jpg *.jpeg)"
-        )
-        if path:
-            self.selected_photo_path = path
-            filename = os.path.basename(path)
-            # Corta o nome se for muito grande
-            display_name = (filename[:25] + "..") if len(filename) > 25 else filename
-            self.lbl_photo_status.setText(display_name)
-            self.lbl_photo_status.setStyleSheet(
-                f"color: {COLORS['success']}; font-weight: bold;"
-            )
-
-    def add_visit(self):
-        if not self.intern.intern_id:
-            return
-
-        venue_id = self.combo_venue.currentData()
-        if not venue_id:
-            QMessageBox.warning(self, "Atenção", "Selecione o local da visita.")
-            return
-
-        iso_date = self.date_edit.date().toString("yyyy-MM-dd")
-        venue_name = self.combo_venue.currentText()
-        obs = self.txt_obs.text().strip()
-
-        final_photo_name = None
-        if self.selected_photo_path:
-            try:
-                final_photo_name = self.service.save_photo(
-                    self.selected_photo_path, self.intern.name, venue_name, iso_date
-                )
-            except Exception as e:
-                QMessageBox.critical(self, "Erro", f"Erro ao salvar foto: {e}")
+def open_visit_dialog(
+    intern: Intern,
+    service: VisitService,
+    venue_service: VenueService,
+    on_close: Optional[Callable] = None,
+):
+    """Opens modal to manage technical visits and photos for an intern."""
+    venues = venue_service.get_all()
+    venue_dict = {v.venue_id: v.venue_name for v in venues if v.venue_id is not None}
+    venue_dict[0] = "Local Não Especificado"
+
+    photos_dir = USER_DATA_ROOT / "photos"
+    photos_dir.mkdir(parents=True, exist_ok=True)
+
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-3xl p-6 dialog-card"):
+        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("pin_drop", color="primary", size="md")
+                with ui.column().classes("gap-0"):
+                    ui.label(f"Visitas Técnicas: {intern.name}").classes("text-xl font-bold text-slate-800")
+                    ui.label("Supervisão in loco e registro fotográfico").classes("text-xs text-slate-500")
+            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
+
+        list_container = ui.column().classes("w-full max-h-72 overflow-y-auto gap-2 py-2")
+
+        def refresh_visits():
+            list_container.clear()
+            if not intern.intern_id:
                 return
 
-        new_visit = Visit(
-            intern_id=self.intern.intern_id,
-            venue_id=venue_id,
-            visit_date=iso_date,
-            observation=obs,
-            photo_path=final_photo_name,
-        )
+            visits = service.get_by_intern_id(intern.intern_id)
 
-        try:
-            self.service.add_new_visit(new_visit)
+            with list_container:
+                if not visits:
+                    with ui.column().classes("w-full items-center py-6 gap-1"):
+                        ui.icon("location_off", size="lg").classes("text-slate-300")
+                        ui.label("Nenhuma visita técnica registrada.").classes("text-xs text-slate-500")
+                    return
 
-            self.txt_obs.clear()
-            self.selected_photo_path = None
-            self.lbl_photo_status.setText("Nenhuma foto selecionada")
-            self.lbl_photo_status.setStyleSheet(
-                f"color: {COLORS['secondary']}; font-style: italic;"
-            )
+                for v in reversed(visits):
+                    v_name = venue_dict.get(v.venue_id, "Local Não Informado")
+                    with ui.card().classes("w-full p-3 bg-white border border-slate-200 gap-2"):
+                        with ui.row().classes("w-full justify-between items-center"):
+                            with ui.row().classes("items-center gap-2"):
+                                ui.badge(v.visit_date or "Sem data", color="blue-7").classes("text-xs font-semibold")
+                                ui.label(f"📍 {v_name}").classes("text-xs font-bold text-slate-700")
 
-            self.load_data()
-            QMessageBox.information(self, "Sucesso", "Visita registrada!")
+                            with ui.row().classes("items-center gap-1"):
+                                if v.photo_path:
+                                    ui.button(
+                                        icon="image",
+                                        on_click=lambda photo=v.photo_path: open_photo_preview(photo),
+                                    ).props("flat round dense size=xs color=primary").tooltip("Ver Foto")
 
-        except Exception as e:
-            QMessageBox.critical(self, "Erro", f"Falha ao salvar visita: {e}")
+                                ui.button(
+                                    icon="delete",
+                                    on_click=lambda vis=v: handle_delete_visit(vis),
+                                ).props("flat round dense size=xs color=negative").tooltip("Excluir Visita")
 
-    def delete_visit(self):
-        row = self.table.currentRow()
-        if row < 0:
-            QMessageBox.warning(self, "Atenção", "Selecione uma visita para excluir.")
-            return
+                        if v.notes:
+                            ui.label(v.notes).classes("text-sm text-slate-800 whitespace-pre-wrap")
 
-        item_id = self.table.item(row, 0)
-        if not item_id:
-            return
+        def handle_delete_visit(visit_obj):
+            if visit_obj:
+                service.delete_visit(visit_obj)
+                ui.notify("Visita técnica excluída.", color="info")
+                refresh_visits()
 
-        visit_id = int(item_id.text())
+        def open_photo_preview(filename: str):
+            photo_file = photos_dir / filename
+            if not photo_file.exists():
+                ui.notify("Arquivo da foto não encontrado no servidor.", color="warning")
+                return
 
-        confirm = QMessageBox.question(
-            self,
-            "Excluir",
-            "Tem certeza que deseja apagar este registro?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if confirm == QMessageBox.StandardButton.Yes:
-            dummy = Visit(intern_id=0, venue_id=0, visit_date="", visit_id=visit_id)
-            self.service.delete_visit(dummy)
-            self.load_data()
+            with ui.dialog() as p_dialog, ui.card().classes("p-4 dialog-card max-w-2xl"):
+                with ui.row().classes("w-full justify-between items-center pb-2"):
+                    ui.label("Registro Fotográfico").classes("font-bold text-slate-800")
+                    ui.button(icon="close", on_click=p_dialog.close).props("flat round dense size=sm")
 
-    def view_photo(self):
-        """Abre a foto no visualizador padrão do sistema."""
-        row = self.table.currentRow()
-        if row < 0:
-            return
+                ui.image(photo_file).classes("rounded-lg max-h-96 object-contain")
+            p_dialog.open()
 
-        item = self.table.item(row, 4)
-        if not item:
-            return
+        # Add new visit form
+        with ui.column().classes("w-full pt-3 border-t border-slate-200 gap-2"):
+            ui.label("Nova Visita Técnica").classes("text-xs font-bold text-slate-700 uppercase tracking-wider")
 
-        photo_filename = item.data(Qt.ItemDataRole.UserRole)
+            with ui.grid(columns=2).classes("w-full gap-3"):
+                date_input = ui.input("Data da Visita", value=date.today().isoformat()).classes("w-full").props("dense outlined")
+                with date_input.add_slot("append"):
+                    ui.icon("event").classes("cursor-pointer")
+                    with ui.menu():
+                        ui.date().bind_value(date_input)
 
-        if photo_filename:
-            full_path = USER_DATA_ROOT / "photos" / photo_filename
-            if full_path.exists():
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(full_path)))
-            else:
-                QMessageBox.warning(
-                    self, "Erro", "Arquivo da foto não encontrado no disco."
+                venue_select = ui.select(
+                    label="Local da Visita",
+                    options=venue_dict,
+                    value=intern.venue_id or 0,
+                ).classes("w-full").props("dense outlined")
+
+            notes_input = ui.textarea(
+                label="Observações / Avaliação da Visita",
+                placeholder="Descreva as condições de trabalho, orientações passadas e estrutura...",
+            ).classes("w-full").props("outlined rows=2")
+
+            uploaded_photo_filename = {"name": ""}
+
+            async def handle_photo_upload(e):
+                content = e.content.read()
+                temp_file = TEMP_DIR / e.name
+                with open(temp_file, "wb") as f:
+                    f.write(content)
+
+                v_name = venue_dict.get(venue_select.value, "Local")
+                saved_name = service.save_photo(
+                    original_path_str=str(temp_file),
+                    intern_name=intern.name,
+                    venue_name=v_name,
+                    visit_date=date_input.value,
                 )
+                uploaded_photo_filename["name"] = saved_name
+                ui.notify(f"Foto '{e.name}' carregada com sucesso!", color="positive")
+                try:
+                    temp_file.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+            with ui.row().classes("w-full items-center justify-between"):
+                with ui.row().classes("items-center gap-2"):
+                    ui.upload(
+                        label="Anexar Foto",
+                        on_upload=handle_photo_upload,
+                        auto_upload=True,
+                        max_files=1,
+                    ).props('accept="image/*" flat size=sm').classes("max-w-xs")
+
+                def handle_add_visit():
+                    if not intern.intern_id:
+                        return
+
+                    selected_vid = venue_select.value if venue_select.value != 0 else None
+                    new_visit = Visit(
+                        intern_id=intern.intern_id,
+                        venue_id=selected_vid,
+                        visit_date=date_input.value,
+                        notes=notes_input.value or "",
+                        photo_path=uploaded_photo_filename["name"] or None,
+                    )
+                    try:
+                        service.add_new_visit(new_visit)
+                        notes_input.value = ""
+                        uploaded_photo_filename["name"] = ""
+                        ui.notify("Visita técnica registrada com sucesso!", color="positive")
+                        refresh_visits()
+                    except Exception as e:
+                        ui.notify(f"Erro ao salvar visita: {e}", color="negative")
+
+                ui.button("Registrar Visita", icon="add", on_click=handle_add_visit).props("color=primary size=sm")
+
+        refresh_visits()
+
+        with ui.row().classes("w-full justify-end pt-3 border-t border-slate-200 mt-2"):
+            ui.button("Fechar", on_click=dialog.close).props("flat color=grey")
+
+    if on_close:
+        dialog.on("hide", on_close)
+
+    dialog.open()

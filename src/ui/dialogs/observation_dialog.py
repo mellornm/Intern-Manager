@@ -1,219 +1,112 @@
-from datetime import datetime
+"""
+Pedagogical and Supervision Observations Dialog for NiceGUI.
+"""
 
-import qtawesome as qta
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import (
-    QDialog,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QMessageBox,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-)
+from datetime import date
+from typing import Callable, Optional
+from nicegui import ui
 
 from core.models.intern import Intern
 from core.models.observation import Observation
 from services.observation_service import ObservationService
-from ui.styles import COLORS
 
 
-class ObservationDialog(QDialog):
-    def __init__(self, parent, intern: Intern, service: ObservationService):
-        super().__init__(parent)
-        self.intern = intern
-        self.service = service
+def open_observation_dialog(
+    intern: Intern,
+    service: ObservationService,
+    on_close: Optional[Callable] = None,
+):
+    """Opens modal to manage pedagogical observations for an intern."""
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-2xl p-6 dialog-card"):
+        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("notes", color="primary", size="md")
+                with ui.column().classes("gap-0"):
+                    ui.label(f"Observações: {intern.name}").classes("text-xl font-bold text-slate-800")
+                    ui.label("Anotações de acompanhamento pedagógico").classes("text-xs text-slate-500")
+            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
 
-        self.setWindowTitle(f"Observações: {self.intern.name}")
-        self.resize(550, 650)
+        # Container for observation timeline
+        timeline_container = ui.column().classes("w-full max-h-72 overflow-y-auto gap-2 py-2")
 
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {COLORS["light"]}; }}
-            
-            QListWidget {{
-                background-color: transparent;
-                border: none;
-                outline: none;
-            }}
-            QListWidget::item {{
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 6px;
-                padding: 10px;
-                margin-bottom: 10px;
-                color: {COLORS["dark"]};
-            }}
-            QListWidget::item:selected {{
-                border: 1px solid {COLORS["primary"]};
-                background-color: #E3F2FD; /* Azul bem clarinho */
-                color: {COLORS["dark"]};
-            }}
-            
-            QTextEdit {{
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 6px;
-                padding: 10px;
-                font-size: 13px;
-            }}
-            QTextEdit:focus {{ border: 1px solid {COLORS["primary"]}; }}
-        """)
+        def refresh_observations():
+            timeline_container.clear()
+            if not intern.intern_id:
+                return
 
-        self._setup_ui()
-        self.load_data()
+            obs_list = service.get_by_intern_id(intern.intern_id)
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(15)
+            with timeline_container:
+                if not obs_list:
+                    with ui.column().classes("w-full items-center py-6 gap-1"):
+                        ui.icon("chat_bubble_outline", size="lg").classes("text-slate-300")
+                        ui.label("Nenhuma observação registrada ainda.").classes("text-xs text-slate-500")
+                    return
 
-        # --- Header ---
-        header = QHBoxLayout()
-        icon = QLabel()
-        icon.setPixmap(
-            qta.icon("fa5s.sticky-note", color=COLORS["warning"]).pixmap(QSize(28, 28))
-        )
-        lbl = QLabel("Caderno de Observações")
-        lbl.setStyleSheet(
-            f"font-size: 18px; font-weight: bold; color: {COLORS['dark']};"
-        )
-        header.addWidget(icon)
-        header.addWidget(lbl)
-        header.addStretch()
-        layout.addLayout(header)
+                for obs in reversed(obs_list):
+                    date_display = obs.date.strftime("%d/%m/%Y") if obs.date else "Data não inf."
+                    with ui.card().classes("w-full p-3 bg-white border border-slate-200 gap-1"):
+                        with ui.row().classes("w-full justify-between items-center"):
+                            ui.badge(date_display, color="blue-7").classes("text-xs font-semibold")
+                            ui.button(
+                                icon="delete",
+                                on_click=lambda o_id=obs.observation_id: handle_delete_obs(o_id),
+                            ).props("flat round dense size=xs color=negative").tooltip("Excluir Anotação")
 
-        # --- Lista (Feed) ---
-        self.list_widget = QListWidget()
-        self.list_widget.setWordWrap(True)
-        # Padding interno nos itens
-        self.list_widget.setSpacing(5)
-        layout.addWidget(self.list_widget)
+                        ui.label(obs.observation).classes("text-sm text-slate-800 whitespace-pre-wrap pt-1")
 
-        # Botão de apagar (pequeno, alinhado à direita do feed)
-        h_del = QHBoxLayout()
-        h_del.addStretch()
-        self.btn_del = QPushButton(" Apagar Selecionada")
-        self.btn_del.setIcon(qta.icon("fa5s.trash", color=COLORS["danger"]))
-        self.btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_del.setStyleSheet(
-            f"color: {COLORS['danger']}; background: transparent; border: none; font-weight: 600;"
-        )
-        self.btn_del.clicked.connect(self.delete_selected)
-        h_del.addWidget(self.btn_del)
-        layout.addLayout(h_del)
+        def handle_delete_obs(obs_id):
+            if obs_id:
+                service.delete(obs_id)
+                ui.notify("Observação excluída.", color="info")
+                refresh_observations()
 
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"color: {COLORS['border']}")
-        layout.addWidget(line)
+        # Add new observation form
+        with ui.column().classes("w-full pt-3 border-t border-slate-200 gap-2"):
+            ui.label("Adicionar Nova Anotação").classes("text-xs font-bold text-slate-700 uppercase tracking-wider")
 
-        # --- Nova Nota ---
-        layout.addWidget(QLabel("<b>Nova Anotação:</b>"))
-        self.txt_new = QTextEdit()
-        self.txt_new.setPlaceholderText(
-            "Escreva aqui detalhes sobre o desempenho, comportamento ou incidentes..."
-        )
-        self.txt_new.setMaximumHeight(100)
-        layout.addWidget(self.txt_new)
+            with ui.row().classes("w-full gap-2 items-center"):
+                date_input = ui.input("Data", value=date.today().isoformat()).classes("w-40").props("dense outlined")
+                with date_input.add_slot("append"):
+                    ui.icon("event").classes("cursor-pointer")
+                    with ui.menu():
+                        ui.date().bind_value(date_input)
 
-        # Botão Salvar
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
+            obs_input = ui.textarea(
+                placeholder="Descreva o acompanhamento pedagógico, atitude, evolução ou ocorrência...",
+            ).classes("w-full").props("outlined rows=2")
 
-        btn_cancel = QPushButton("Fechar")
-        btn_cancel.setStyleSheet(
-            f"background: transparent; color: {COLORS['secondary']}; border: none;"
-        )
-        btn_cancel.clicked.connect(self.accept)
+            def handle_add_obs():
+                text = (obs_input.value or "").strip()
+                if not text:
+                    ui.notify("Digite o texto da observação.", color="warning")
+                    return
 
-        self.btn_add = QPushButton(" Adicionar Nota")
-        self.btn_add.setIcon(qta.icon("fa5s.paper-plane", color="white"))
-        self.btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_add.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["primary"]}; color: white; border: none; 
-                padding: 8px 20px; border-radius: 6px; font-weight: bold;
-            }}
-            QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
-        """)
-        self.btn_add.clicked.connect(self.add_observation)
+                if not intern.intern_id:
+                    return
 
-        btn_layout.addWidget(btn_cancel)
-        btn_layout.addWidget(self.btn_add)
-        layout.addLayout(btn_layout)
-
-    def load_data(self):
-        if not self.intern.intern_id:
-            return
-
-        obs_list = self.service.get_by_intern_id(self.intern.intern_id)
-        self.list_widget.clear()
-
-        self.list_widget.setIconSize(QSize(20, 20))
-
-        for obs in obs_list:
-            data_display = "Data desconhecida"
-            if obs.last_update:
+                new_obs = Observation(
+                    intern_id=intern.intern_id,
+                    observation=text,
+                    date=date_input.value,
+                )
                 try:
-                    dt_obj = datetime.strptime(
-                        str(obs.last_update), "%Y-%m-%d %H:%M:%S"
-                    )
-                    data_display = dt_obj.strftime("%d/%m/%Y às %H:%M")
-                except ValueError:
-                    data_display = str(obs.last_update)
+                    service.add_new_observation(new_obs)
+                    obs_input.value = ""
+                    ui.notify("Observação registrada!", color="positive")
+                    refresh_observations()
+                except Exception as e:
+                    ui.notify(f"Erro ao salvar: {e}", color="negative")
 
-            texto_item = f"{data_display}\n{obs.observation}"
+            with ui.row().classes("w-full justify-end"):
+                ui.button("Registrar Observação", icon="send", on_click=handle_add_obs).props("color=primary size=sm")
 
-            item = QListWidgetItem(texto_item)
+        refresh_observations()
 
-            item.setIcon(qta.icon("fa5s.calendar-alt", color=COLORS["secondary"]))
+        with ui.row().classes("w-full justify-end pt-3 border-t border-slate-200 mt-2"):
+            ui.button("Fechar", on_click=dialog.close).props("flat color=grey")
 
-            item.setData(Qt.ItemDataRole.UserRole, obs)
-            self.list_widget.addItem(item)
+    if on_close:
+        dialog.on("hide", on_close)
 
-        self.list_widget.scrollToTop()
-
-    def add_observation(self):
-        if not self.intern.intern_id:
-            QMessageBox.warning(self, "Erro", "Salve o aluno primeiro.")
-            return
-
-        content = self.txt_new.toPlainText().strip()
-        if not content:
-            return
-
-        new_obs = Observation(intern_id=self.intern.intern_id, observation=content)
-
-        try:
-            self.service.add_new_observation(new_obs)
-            self.txt_new.clear()
-            self.load_data()
-        except Exception as e:
-            QMessageBox.critical(self, "Erro", f"Falha ao salvar: {e}")
-
-    def delete_selected(self):
-        item = self.list_widget.currentItem()
-        if not item:
-            return
-
-        obs_obj = item.data(Qt.ItemDataRole.UserRole)
-        if not isinstance(obs_obj, Observation):
-            return
-
-        if (
-            QMessageBox.question(
-                self,
-                "Confirmar",
-                "Apagar essa anotação?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            == QMessageBox.StandardButton.Yes
-        ):
-            try:
-                self.service.delete_observation(obs_obj)
-                self.load_data()
-            except Exception as e:
-                QMessageBox.critical(self, "Erro", f"Erro: {e}")
+    dialog.open()

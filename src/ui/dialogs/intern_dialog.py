@@ -1,365 +1,166 @@
-from typing import Optional
-from PySide6.QtWidgets import (
-    QDialog,
-    QFormLayout,
-    QLineEdit,
-    QHBoxLayout,
-    QVBoxLayout,
-    QMessageBox,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QDateEdit,
-    QComboBox,
-    QCheckBox,
-)
-from PySide6.QtCore import Qt, QDate
-import qtawesome as qta
+"""
+Intern Add/Edit Dialog using NiceGUI.
+"""
+
+from datetime import date, datetime
+from typing import Callable, Optional
+from nicegui import ui
 
 from core.models.intern import Intern
+from services.intern_service import InternService
 from services.venue_service import VenueService
-from ui.dialogs.venue_dialog import VenueDialog
 from utils.validations import validate_date_range
-from ui.styles import COLORS
 
 
-class InternDialog(QDialog):
-    def __init__(
-        self, parent, venue_service: VenueService, intern: Optional[Intern] = None
-    ):
-        super().__init__(parent)
-        self.intern = intern
-        self.venue_service = venue_service
+def open_intern_dialog(
+    intern_service: InternService,
+    venue_service: VenueService,
+    intern: Optional[Intern] = None,
+    on_success: Optional[Callable] = None,
+):
+    """Opens dialog to create or edit an intern."""
+    is_edit = intern is not None
+    dialog_title = "Editar Aluno" if is_edit else "Novo Aluno"
 
-        self.setWindowTitle("Ficha do Estagiário")
-        self.setMinimumWidth(550)
+    venues = venue_service.get_all()
+    venue_options = {v.venue_id: v.venue_name for v in venues if v.venue_id is not None}
+    venue_options[0] = "Nenhum (Sem Local)"
 
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {COLORS["light"]}; }}
-            QLabel {{ color: {COLORS["dark"]}; font-size: 13px; }}
-            
-            /* --- Campos Normais (Texto e Combo) --- */
-            QLineEdit, QComboBox {{
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 4px;
-                padding: 8px;
-                min-height: 20px;
-                font-size: 13px;
-                color: {COLORS["dark"]};
-            }}
+    terms = [f"{y}/{s}" for y in range(2025, 2031) for s in (1, 2)]
 
-            /* --- CORREÇÃO DATA: Padding LARGO --- */
-            QDateEdit {{
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 4px;
-                /* Top/Bottom 3px para não cortar altura */
-                /* Right 35px: Muita folga para a seta não encostar no ano */
-                padding: 3px 35px 3px 8px; 
-                min-height: 20px;
-                min-width: 150px; /* Garante largura mínima via CSS também */
-                font-size: 13px;
-                color: {COLORS["dark"]};
-            }}
-            
-            /* Botão Drop-down Estilizado */
-            QDateEdit::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 25px;
-                border-left-width: 1px;
-                border-left-color: {COLORS["border"]};
-                border-left-style: solid;
-                border-top-right-radius: 4px;
-                border-bottom-right-radius: 4px;
-                background-color: {COLORS["light"]};
-            }}
-            
-            /* Seta Desenhada com CSS */
-            QDateEdit::down-arrow {{
-                image: none;
-                width: 0; 
-                height: 0;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid {COLORS["dark"]};
-                margin-right: 2px;
-            }}
-            
-            /* --- Popup do Calendário --- */
-            QCalendarWidget QWidget {{
-                background-color: {COLORS["white"]};
-                color: {COLORS["dark"]};
-                alternate-background-color: #FAFAFA;
-            }}
-            QCalendarWidget QToolButton {{
-                color: {COLORS["dark"]};
-                background-color: transparent;
-                icon-size: 24px;
-            }}
-            QCalendarWidget QToolButton::menu-indicator {{ image: none; }}
-            QCalendarWidget QSpinBox {{
-                background-color: {COLORS["white"]};
-                color: {COLORS["dark"]};
-                selection-background-color: {COLORS["primary"]};
-                selection-color: white;
-            }}
+    # Initial values
+    init_name = intern.name if is_edit else ""
+    init_ra = intern.registration_number if is_edit else ""
+    init_email = intern.email if is_edit else ""
+    init_phone = intern.phone if is_edit else ""
+    init_venue_id = intern.venue_id if (is_edit and intern.venue_id) else 0
+    init_term = intern.term if (is_edit and intern.term in terms) else terms[0]
+    init_hours = intern.working_hours if is_edit else ""
+    init_days = intern.working_days if is_edit else ""
+    init_active = intern.is_active if is_edit else True
 
-            QLineEdit:focus, QComboBox:focus, QDateEdit:focus {{ 
-                border: 1px solid {COLORS["primary"]}; 
-            }}
-        """)
+    init_start = str(intern.start_date) if (is_edit and intern.start_date) else date.today().isoformat()
+    init_end = str(intern.end_date) if (is_edit and intern.end_date) else date.today().replace(month=min(date.today().month + 6, 12)).isoformat()
 
-        self._setup_ui()
-        self.load_venues()
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-2xl p-6 dialog-card"):
+        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("school", color="primary", size="md")
+                ui.label(dialog_title).classes("text-xl font-bold text-slate-800")
+            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
 
-        if self.intern:
-            self.load_data()
+        with ui.column().classes("w-full gap-4 pt-2"):
+            with ui.grid(columns=2).classes("w-full gap-4"):
+                name_input = ui.input("Nome Completo *", value=init_name).classes("w-full")
+                ra_input = ui.input("RA (Matrícula) *", value=init_ra).classes("w-full")
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(25, 25, 25, 25)
+                email_input = ui.input("E-mail", value=init_email).classes("w-full")
+                phone_input = ui.input("WhatsApp / Telefone", value=init_phone, placeholder="Ex: 11999998888").classes("w-full")
 
-        # Header
-        header_title = "Editar Aluno" if self.intern else "Novo Aluno"
-        lbl_head = QLabel(header_title)
-        lbl_head.setStyleSheet(
-            f"font-size: 20px; font-weight: 800; color: {COLORS['primary']}; margin-bottom: 10px;"
-        )
-        layout.addWidget(lbl_head)
+            with ui.grid(columns=2).classes("w-full gap-4"):
+                venue_select = ui.select(
+                    label="Local de Estágio",
+                    options=venue_options,
+                    value=init_venue_id,
+                ).classes("w-full")
 
-        # Form Frame
-        form_frame = QFrame()
-        form_frame.setStyleSheet(
-            f"background-color: {COLORS['white']}; border-radius: 8px; border: 1px solid {COLORS['border']};"
-        )
-        form_layout = QFormLayout(form_frame)
-        form_layout.setContentsMargins(20, 20, 20, 20)
-        form_layout.setSpacing(15)
+                term_select = ui.select(
+                    label="Semestre",
+                    options=terms,
+                    value=init_term,
+                ).classes("w-full")
 
-        # Personal
-        self.txt_name = QLineEdit()
-        self.txt_ra = QLineEdit()
-        self.txt_email = QLineEdit()
-        self.txt_phone = QLineEdit()
-        self.txt_phone.setPlaceholderText("Ex: 11999998888")
+            with ui.grid(columns=2).classes("w-full gap-4"):
+                hours_input = ui.input("Horário de Estágio", value=init_hours, placeholder="Ex: 08:00 - 14:00").classes("w-full")
+                days_input = ui.input("Dias da Semana", value=init_days, placeholder="Ex: Seg a Sex").classes("w-full")
 
-        # Venue
-        self.combo_venue = QComboBox()
-        self.btn_add_venue = QPushButton()
-        self.btn_add_venue.setIcon(qta.icon("fa5s.plus", color="white"))
-        self.btn_add_venue.setFixedSize(36, 36)
-        self.btn_add_venue.setToolTip("Cadastrar novo local")
-        self.btn_add_venue.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_add_venue.setStyleSheet(f"""
-            QPushButton {{ background-color: {COLORS["success"]}; border-radius: 4px; border: none; }}
-            QPushButton:hover {{ background-color: #0E6A0E; }}
-        """)
-        self.btn_add_venue.clicked.connect(self.quick_add_venue)
+            with ui.grid(columns=2).classes("w-full gap-4"):
+                start_input = ui.input("Data de Início", value=init_start).classes("w-full")
+                with start_input.add_slot("append"):
+                    ui.icon("event").classes("cursor-pointer")
+                    with ui.menu():
+                        ui.date().bind_value(start_input)
 
-        venue_layout = QHBoxLayout()
-        venue_layout.addWidget(self.combo_venue)
-        venue_layout.addWidget(self.btn_add_venue)
+                end_input = ui.input("Data de Término", value=init_end).classes("w-full")
+                with end_input.add_slot("append"):
+                    ui.icon("event").classes("cursor-pointer")
+                    with ui.menu():
+                        ui.date().bind_value(end_input)
 
-        self.date_start = QDateEdit()
-        self.date_start.setCalendarPopup(True)
-        self.date_start.setDisplayFormat("dd/MM/yyyy")
-        self.date_start.setDate(QDate.currentDate())
-        self.date_start.setFixedWidth(160)
+            active_switch = ui.switch("Estágio Ativo", value=init_active).classes("mt-1")
 
-        self.date_end = QDateEdit()
-        self.date_end.setCalendarPopup(True)
-        self.date_end.setDisplayFormat("dd/MM/yyyy")
-        self.date_end.setDate(QDate.currentDate().addMonths(6))
-        self.date_end.setFixedWidth(160)
+        def handle_save():
+            name = (name_input.value or "").strip()
+            ra = (ra_input.value or "").strip()
 
-        # Semestre
-        self.combo_term = QComboBox()
-        terms = [f"{y}/{s}" for y in range(2025, 2030) for s in [1, 2]]
-        self.combo_term.addItems(terms)
-
-        # Jornada e Horário
-        self.txt_hours = QLineEdit()
-        self.txt_hours.setPlaceholderText("Ex: 9h - 15h")
-
-        self.txt_days = QLineEdit()
-        self.txt_days.setPlaceholderText("Ex: Seg a Sex")
-
-        hours_layout = QHBoxLayout()
-        hours_layout.addWidget(self.txt_hours)
-        hours_layout.addWidget(QLabel("   Dias:"))
-        hours_layout.addWidget(self.txt_days)
-
-        # Helper Labels
-        def lbl(t):
-            lbl_style = QLabel(t)
-            lbl_style.setStyleSheet("font-weight: bold;")
-            return lbl_style
-
-        form_layout.addRow(lbl("Nome Completo *:"), self.txt_name)
-        form_layout.addRow(lbl("RA (Matrícula) *:"), self.txt_ra)
-        form_layout.addRow(lbl("E-mail:"), self.txt_email)
-        form_layout.addRow(lbl("WhatsApp/Telefone:"), self.txt_phone)
-        form_layout.addRow(lbl("Local de Estágio:"), venue_layout)
-        form_layout.addRow(lbl("Semestre:"), self.combo_term)
-        form_layout.addRow(lbl("Horários:"), hours_layout)
-
-        date_layout = QHBoxLayout()
-        date_layout.addWidget(lbl("Início:"))
-        date_layout.addWidget(self.date_start)
-        date_layout.addSpacing(20)
-        date_layout.addWidget(lbl("Término:"))
-        date_layout.addWidget(self.date_end)
-
-        form_layout.addRow(lbl("Vigência:"), date_layout)
-
-        # Checkbox Estágio Concluído
-        self.chk_concluded = QCheckBox("Estágio Concluído")
-        self.chk_concluded.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_concluded.setStyleSheet(f"""
-            QCheckBox {{
-                font-size: 13px;
-                color: {COLORS["dark"]};
-            }}
-        """)
-        form_layout.addRow(lbl("Status:"), self.chk_concluded)
-
-        layout.addWidget(form_frame)
-
-        # Botões
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-
-        self.btn_cancel = QPushButton("Cancelar")
-        self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cancel.setStyleSheet(f"""
-            QPushButton {{ background-color: transparent; border: 1px solid {COLORS["secondary"]}; color: {COLORS["secondary"]}; padding: 10px 20px; border-radius: 6px; font-weight: bold; }}
-            QPushButton:hover {{ background-color: {COLORS["light"]}; }}
-        """)
-        self.btn_cancel.clicked.connect(self.reject)
-
-        self.btn_save = QPushButton(" Salvar Aluno")
-        self.btn_save.setIcon(qta.icon("fa5s.check", color="white"))
-        self.btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_save.setStyleSheet(f"""
-            QPushButton {{ background-color: {COLORS["primary"]}; color: white; border: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; font-size: 14px; }}
-            QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
-        """)
-        self.btn_save.clicked.connect(self.save_data)
-
-        btn_layout.addWidget(self.btn_cancel)
-        btn_layout.addWidget(self.btn_save)
-        layout.addLayout(btn_layout)
-
-    def load_venues(self):
-        current_data = self.combo_venue.currentData()
-        self.combo_venue.clear()
-        self.combo_venue.addItem("--- Selecione ---", None)
-        venues = self.venue_service.get_all()
-        for v in venues:
-            self.combo_venue.addItem(v.venue_name, v.venue_id)
-        if current_data:
-            idx = self.combo_venue.findData(current_data)
-            if idx >= 0:
-                self.combo_venue.setCurrentIndex(idx)
-
-    def quick_add_venue(self):
-        dialog = VenueDialog(self)
-        if dialog.exec():
-            try:
-                new_data = dialog.get_data()
-                new_id = self.venue_service.add_new_venue(new_data)
-                self.load_venues()
-                idx = self.combo_venue.findData(new_id)
-                if idx >= 0:
-                    self.combo_venue.setCurrentIndex(idx)
-            except Exception as e:
-                QMessageBox.critical(self, "Erro", f"Erro ao criar local: {e}")
-
-    def load_data(self):
-        if not self.intern:
-            return
-        self.txt_name.setText(str(self.intern.name or ""))
-        self.txt_ra.setText(str(self.intern.registration_number or ""))
-        self.txt_email.setText(self.intern.email or "")
-        self.txt_phone.setText(self.intern.phone or "")
-        self.combo_term.setCurrentText(self.intern.term)
-
-        # Carregamento correto dos novos campos
-        self.txt_hours.setText(self.intern.working_hours or "")
-        self.txt_days.setText(self.intern.working_days or "")
-
-        if self.intern.venue_id:
-            idx = self.combo_venue.findData(self.intern.venue_id)
-            if idx >= 0:
-                self.combo_venue.setCurrentIndex(idx)
-
-        # Converter YYYY-MM-DD para QDate
-        # Importante: Se o dado no banco ainda estiver sujo (ex: "Segunda a Sexta"),
-        # o QDate.fromString vai retornar inválido, e o setDate não fará nada (data ficará a atual).
-        if self.intern.start_date:
-            d = QDate.fromString(self.intern.start_date, "yyyy-MM-dd")
-            if d.isValid():
-                self.date_start.setDate(d)
-
-        if self.intern.end_date:
-            d = QDate.fromString(self.intern.end_date, "yyyy-MM-dd")
-            if d.isValid():
-                self.date_end.setDate(d)
-
-        self.chk_concluded.setChecked(not self.intern.is_active)
-
-    def save_data(self):
-        from utils.validations import validate_email_format
-
-        name = self.txt_name.text().strip()
-        ra = self.txt_ra.text().strip()
-        email = self.txt_email.text().strip()
-
-        if not name:
-            QMessageBox.warning(self, "Erro", "Nome é obrigatório.")
-            self.txt_name.setFocus()
-            return
-        if not ra:
-            QMessageBox.warning(self, "Erro", "RA é obrigatório.")
-            self.txt_ra.setFocus()
-            return
-
-        if email:
-            try:
-                validate_email_format(email)
-            except ValueError as e:
-                QMessageBox.warning(self, "E-mail Inválido", str(e))
-                self.txt_email.setFocus()
+            if not name:
+                ui.notify("O nome completo é obrigatório.", color="negative")
+                return
+            if not ra:
+                ui.notify("O RA (matrícula) é obrigatório.", color="negative")
                 return
 
-        s_str = self.date_start.date().toString("dd/MM/yyyy")
-        e_str = self.date_end.date().toString("dd/MM/yyyy")
+            try:
+                dt_start = datetime.strptime(start_input.value, "%Y-%m-%d").date() if start_input.value else None
+                dt_end = datetime.strptime(end_input.value, "%Y-%m-%d").date() if end_input.value else None
+            except Exception:
+                ui.notify("Formato de data inválido. Use AAAA-MM-DD.", color="negative")
+                return
 
-        try:
-            validate_date_range(s_str, e_str)
-        except ValueError as e:
-            QMessageBox.warning(self, "Data Inválida", str(e))
-            return
+            if dt_start and dt_end:
+                valid, msg = validate_date_range(dt_start, dt_end)
+                if not valid:
+                    ui.notify(msg, color="negative")
+                    return
 
-        self.accept()
+            chosen_venue_id = venue_select.value if venue_select.value != 0 else None
 
-    def get_data(self) -> Intern:
-        cid = self.intern.intern_id if self.intern else None
-        return Intern(
-            intern_id=cid,
-            name=self.txt_name.text().strip(),
-            registration_number=self.txt_ra.text().strip(),
-            email=self.txt_email.text().strip(),
-            phone=self.txt_phone.text().strip() or None,
-            venue_id=self.combo_venue.currentData(),
-            term=self.combo_term.currentText(),
-            start_date=self.date_start.date().toString("yyyy-MM-dd"),
-            end_date=self.date_end.date().toString("yyyy-MM-dd"),
-            # Campos novos
-            working_hours=self.txt_hours.text().strip() or None,
-            working_days=self.txt_days.text().strip() or None,
-            is_active=not self.chk_concluded.isChecked(),
-        )
+            if is_edit and intern:
+                intern.name = name
+                intern.registration_number = ra
+                intern.email = email_input.value or ""
+                intern.phone = phone_input.value or ""
+                intern.venue_id = chosen_venue_id
+                intern.term = term_select.value or ""
+                intern.working_hours = hours_input.value or ""
+                intern.working_days = days_input.value or ""
+                intern.start_date = dt_start.isoformat() if dt_start else None
+                intern.end_date = dt_end.isoformat() if dt_end else None
+                intern.is_active = active_switch.value
+
+                success = intern_service.update_intern(intern)
+                if success:
+                    ui.notify("Aluno atualizado com sucesso!", color="positive")
+                    dialog.close()
+                    if on_success:
+                        on_success()
+                else:
+                    ui.notify("Falha ao atualizar aluno.", color="negative")
+            else:
+                new_intern = Intern(
+                    name=name,
+                    registration_number=ra,
+                    email=email_input.value or "",
+                    phone=phone_input.value or "",
+                    venue_id=chosen_venue_id,
+                    term=term_select.value or "",
+                    working_hours=hours_input.value or "",
+                    working_days=days_input.value or "",
+                    start_date=dt_start.isoformat() if dt_start else None,
+                    end_date=dt_end.isoformat() if dt_end else None,
+                    is_active=active_switch.value,
+                )
+                try:
+                    intern_service.save_intern(new_intern)
+                    ui.notify(f"Aluno {name} cadastrado com sucesso!", color="positive")
+                    dialog.close()
+                    if on_success:
+                        on_success()
+                except Exception as e:
+                    ui.notify(f"Erro ao salvar: {e}", color="negative")
+
+        with ui.row().classes("w-full justify-end gap-3 pt-4 border-t border-slate-200 mt-2"):
+            ui.button("Cancelar", on_click=dialog.close).props("flat color=grey")
+            ui.button("Salvar Aluno", icon="check", on_click=handle_save).props("color=primary")
+
+    dialog.open()

@@ -1,176 +1,81 @@
-from typing import Optional
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLineEdit,
-    QLabel,
-    QPushButton,
-    QDoubleSpinBox,
-    QFrame,
-)
-from PySide6.QtCore import Qt, QSize
-import qtawesome as qta
+"""
+Evaluation Criteria Add/Edit Dialog for NiceGUI.
+"""
+
+from typing import Callable, Optional
+from nicegui import ui
 
 from core.models.evaluation_criteria import EvaluationCriteria
-from ui.styles import COLORS
+from services.evaluation_criteria_service import EvaluationCriteriaService
 
 
-class CriteriaDialog(QDialog):
-    """
-    Formulário para Criar ou Editar um Critério de Avaliação.
-    """
+def open_criteria_dialog(
+    service: EvaluationCriteriaService,
+    criteria: Optional[EvaluationCriteria] = None,
+    on_success: Optional[Callable] = None,
+):
+    """Opens modal to add or edit evaluation criteria."""
+    is_edit = criteria is not None
+    dialog_title = "Editar Critério de Avaliação" if is_edit else "Novo Critério de Avaliação"
 
-    def __init__(self, parent=None, criteria: Optional[EvaluationCriteria] = None):
-        super().__init__(parent)
-        self.criteria = criteria
-        self.setWindowTitle("Editar Critério" if criteria else "Novo Critério")
-        self.setMinimumWidth(400)
+    init_name = criteria.name if is_edit else ""
+    init_desc = criteria.description if is_edit else ""
+    init_weight = criteria.weight if (is_edit and criteria.weight is not None) else 1.0
 
-        # Estilo CSS
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {COLORS["white"]}; }}
-            
-            QLabel {{ 
-                color: {COLORS["medium"]}; 
-                font-size: 12px; 
-                font-weight: bold; 
-                margin-top: 5px;
-            }}
-            
-            QLineEdit, QDoubleSpinBox {{
-                background-color: {COLORS["light"]};
-                border: 1px solid {COLORS["border"]};
-                border-radius: 6px;
-                padding: 10px;
-                font-size: 14px;
-                color: {COLORS["dark"]};
-            }}
-            QLineEdit:focus, QDoubleSpinBox:focus {{ 
-                background-color: {COLORS["white"]};
-                border: 1px solid {COLORS["primary"]}; 
-            }}
-            
-            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
-                width: 0px; 
-                border: none;
-            }}
-        """)
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-md p-6 dialog-card"):
+        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("rule", color="primary", size="md")
+                ui.label(dialog_title).classes("text-xl font-bold text-slate-800")
+            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
 
-        self._setup_ui()
-        if self.criteria:
-            self._load_data()
+        with ui.column().classes("w-full gap-3 pt-2"):
+            name_input = ui.input("Nome do Critério *", value=init_name, placeholder="Ex: Projeto de Intervenção").classes("w-full")
+            desc_input = ui.input("Descrição / Instruções", value=init_desc, placeholder="Ex: Avaliação do relatório final").classes("w-full")
+            weight_input = ui.number("Peso da Avaliação *", value=init_weight, min=0.1, max=100.0, step=0.5).classes("w-full")
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
+        def handle_save():
+            name = (name_input.value or "").strip()
+            if not name:
+                ui.notify("O nome do critério é obrigatório.", color="negative")
+                return
 
-        # --- Cabeçalho ---
-        header = QHBoxLayout()
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(
-            qta.icon("fa5s.clipboard-list", color=COLORS["primary"]).pixmap(
-                QSize(28, 28)
-            )
-        )
+            weight = float(weight_input.value or 1.0)
+            if weight <= 0:
+                ui.notify("O peso deve ser maior que zero.", color="negative")
+                return
 
-        title_box = QVBoxLayout()
-        title_box.setSpacing(2)
-        lbl_title = QLabel("Dados do Critério")
-        lbl_title.setStyleSheet(f"font-size: 16px; color: {COLORS['dark']}; margin: 0;")
+            if is_edit and criteria:
+                criteria.name = name
+                criteria.description = desc_input.value or ""
+                criteria.weight = weight
 
-        title_box.addWidget(lbl_title)
-        header.addWidget(icon_lbl)
-        header.addLayout(title_box)
-        header.addStretch()
-        layout.addLayout(header)
+                try:
+                    criteria_service = service
+                    criteria_service.update_criteria(criteria)
+                    ui.notify("Critério atualizado com sucesso!", color="positive")
+                    dialog.close()
+                    if on_success:
+                        on_success()
+                except Exception as e:
+                    ui.notify(f"Erro ao atualizar: {e}", color="negative")
+            else:
+                new_crit = EvaluationCriteria(
+                    name=name,
+                    description=desc_input.value or "",
+                    weight=weight,
+                )
+                try:
+                    service.add_new_criteria(new_crit)
+                    ui.notify(f"Critério '{name}' adicionado!", color="positive")
+                    dialog.close()
+                    if on_success:
+                        on_success()
+                except Exception as e:
+                    ui.notify(f"Erro ao salvar critério: {e}", color="negative")
 
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"color: {COLORS['border']};")
-        layout.addWidget(line)
+        with ui.row().classes("w-full justify-end gap-2 pt-4 border-t border-slate-200 mt-2"):
+            ui.button("Cancelar", on_click=dialog.close).props("flat color=grey")
+            ui.button("Salvar Critério", icon="check", on_click=handle_save).props("color=primary")
 
-        # --- Campos ---
-        self.txt_name = QLineEdit()
-        self.txt_name.setPlaceholderText("Ex: Prova Teórica, Seminário...")
-
-        self.spin_weight = QDoubleSpinBox()
-        self.spin_weight.setRange(0.0, 10.0)
-        self.spin_weight.setSingleStep(0.5)
-        self.spin_weight.setSuffix(" pts")
-        self.spin_weight.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spin_weight.setStyleSheet(
-            f"color: {COLORS['primary']}; font-weight: bold; font-size: 16px;"
-        )
-
-        self.txt_description = QLineEdit()
-        self.txt_description.setPlaceholderText("Detalhes opcionais...")
-
-        layout.addWidget(QLabel("Nome do Critério *"))
-        layout.addWidget(self.txt_name)
-
-        layout.addWidget(QLabel("Peso (Nota Máxima)"))
-        layout.addWidget(self.spin_weight)
-
-        layout.addWidget(QLabel("Descrição"))
-        layout.addWidget(self.txt_description)
-
-        layout.addStretch()
-
-        # --- Botões ---
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-
-        self.btn_cancel = QPushButton("Cancelar")
-        self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cancel.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["light"]}; color: {COLORS["medium"]}; border: none;
-                padding: 10px 20px; border-radius: 6px; font-weight: 600;
-            }}
-            QPushButton:hover {{ background-color: #E1DFDD; color: {COLORS["dark"]}; }}
-        """)
-        self.btn_cancel.clicked.connect(self.reject)
-
-        self.btn_save = QPushButton("Salvar")
-        self.btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_save.setIcon(qta.icon("fa5s.check", color="white"))
-        self.btn_save.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["primary"]}; color: white; border: none;
-                padding: 10px 25px; border-radius: 6px; font-weight: bold;
-            }}
-            QPushButton:hover {{ background-color: {COLORS["primary_hover"]}; }}
-        """)
-        self.btn_save.clicked.connect(self.validate_and_accept)
-
-        btn_layout.addWidget(self.btn_cancel)
-        btn_layout.addWidget(self.btn_save)
-        layout.addLayout(btn_layout)
-
-    def _load_data(self):
-        if not self.criteria:
-            return
-        self.txt_name.setText(self.criteria.name)
-        self.spin_weight.setValue(self.criteria.weight)
-        if self.criteria.description:
-            self.txt_description.setText(self.criteria.description)
-
-    def validate_and_accept(self):
-        if not self.txt_name.text().strip():
-            self.txt_name.setPlaceholderText("NOME É OBRIGATÓRIO!")
-            self.txt_name.setFocus()
-            return
-        self.accept()
-
-    def get_data(self) -> EvaluationCriteria:
-        c_id = self.criteria.criteria_id if self.criteria else None
-
-        # CORREÇÃO: Argumento 'is_active' removido, pois não existe no modelo
-        return EvaluationCriteria(
-            criteria_id=c_id,
-            name=self.txt_name.text().strip(),
-            weight=self.spin_weight.value(),
-            description=self.txt_description.text().strip(),
-        )
+    dialog.open()

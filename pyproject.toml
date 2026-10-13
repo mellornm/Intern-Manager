@@ -1,7 +1,7 @@
 [project]
 name = "intern_manager"
 version = "2.1.0"
-description = "A comprehensive desktop application for managing academic internships, evaluations, documents, and venue allocations."
+description = "A comprehensive web application for managing academic internships, evaluations, documents, and venue allocations."
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [
@@ -13,7 +13,6 @@ classifiers = [
     "Intended Audience :: Education",
     "Programming Language :: Python :: 3.13",
     "Topic :: Office/Business :: Administration",
-    "Framework :: PySide6",
 ]
 dependencies = [
     "alembic>=1.18.4",
@@ -22,9 +21,7 @@ dependencies = [
     "openpyxl>=3.1.5",
     "packaging>=25.0",
     "pyinstaller>=6.17.0",
-    "pyside6>=6.10.1",
     "python-dotenv>=1.2.4",
-    "qtawesome>=1.4.0",
     "reportlab>=4.4.10",
     "requests>=2.32.5",
     "ruff>=0.14.9",

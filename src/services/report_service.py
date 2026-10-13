@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from PySide6.QtCore import QSettings
+from ui.settings_store import load_settings
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -58,15 +58,13 @@ class ReportService:
             visits = []
 
         # --- 1. Load Settings ---
-        # Explicitly casting to str to satisfy strict type checkers (Pylance)
-        # QSettings.value returns Any/object by default.
-        settings = QSettings("MyOrganization", "InternManager2026")
-        inst_name = str(settings.value("institution_name", "Instituição de Ensino"))
+        settings = load_settings()
+        inst_name = str(settings.get("institution_name", "Instituição de Ensino"))
         supervisor_name = str(
-            settings.value("coordinator_name", "Coordenador não definido")
+            settings.get("coordinator_name", "Coordenador não definido")
         )
-        city_state = str(settings.value("city_state", "Cidade - UF"))
-        logo_path = str(settings.value("logo_path", ""))
+        city_state = str(settings.get("city_state", "Cidade - UF"))
+        logo_path = str(settings.get("logo_path", ""))
 
         # Standard Colors
         PRIMARY_COLOR = colors.HexColor("#283593")

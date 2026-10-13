@@ -14,7 +14,7 @@ class DatabaseManager:
     Singleton manager for SQLAlchemy engine and session lifecycle.
 
     Handles SQLite-specific pragmas for Windows performance and ensures
-    thread-safe session management for the PySide UI.
+    thread-safe session management for the NiceGUI Web UI.
     """
 
     _instance = None

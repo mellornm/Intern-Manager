@@ -154,7 +154,7 @@ def open_document_dialog(
                     if text:
                         feedback_input.value = text
 
-                reason_select.on("update:model-value", on_reason_change)
+                reason_select.on_value_change(on_reason_change)
 
                 def confirm_audit():
                     chosen_status = status_select.value

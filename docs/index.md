@@ -1,6 +1,6 @@
 # Intern Manager Pro
 
-[![Release](https://img.shields.io/badge/Release-v2.1.0-005A9E?style=flat-square)](https://github.com/mellornm/Intern-Manager/releases)
+[![Release](https://img.shields.io/badge/Release-v3.0-005A9E?style=flat-square)](https://github.com/mellornm/Intern-Manager/releases)
 [![Platform](https://img.shields.io/badge/Platform-Windows_|_macOS-gray?style=flat-square)](https://github.com/mellornm/Intern-Manager)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](https://github.com/mellornm/Intern-Manager/blob/main/LICENSE)
 

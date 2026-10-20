@@ -374,7 +374,11 @@ class ReportService:
                         dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
                         date_str = dt.strftime("%Y-%m-%d %H:%M")
                     except ValueError:
-                        if len(date_str) >= 16 and date_str[10] == " " and date_str[13] == ":":
+                        if (
+                            len(date_str) >= 16
+                            and date_str[10] == " "
+                            and date_str[13] == ":"
+                        ):
                             date_str = date_str[:16]
 
                 text_str = obs.observation or "Sem conteúdo"
@@ -445,7 +449,7 @@ class ReportService:
         sig_elements.append(Spacer(1, 10 * mm))
         sig_elements.append(
             Paragraph(
-                f"Documento gerado eletronicamente em {date_emission} via Intern Manager Pro v2.1.0.<br/>Autenticidade sujeita a verificação.",
+                f"Documento gerado eletronicamente em {date_emission} via Intern Manager Pro v3.0.<br/>Autenticidade sujeita a verificação.",
                 styles["SmallText"],
             )
         )

@@ -46,5 +46,8 @@ dist/
 # Site
 site/
 
+# Environments
+.env
+
 
 

@@ -227,8 +227,11 @@ def render_interns_page(container: ServiceContainer, initial_filter: Optional[st
                 # Counter banner
                 with ui.row().classes("w-full justify-between items-center px-1 text-xs text-slate-500"):
                     ui.label(f"Exibindo {len(interns_list)} estagiário(s)")
-                    if state["selected_ids"]:
-                        ui.label(f"✓ {len(state['selected_ids'])} aluno(s) selecionado(s) para ações em lote").classes("font-bold text-blue-700")
+                    selected_label = ui.label(
+                        f"✓ {len(state['selected_ids'])} aluno(s) selecionado(s) para ações em lote"
+                        if state["selected_ids"]
+                        else ""
+                    ).classes("font-bold text-blue-700")
 
                 if not interns_list:
                     with ui.card().classes("w-full p-8 card-shadow items-center justify-center gap-2"):
@@ -256,8 +259,13 @@ def render_interns_page(container: ServiceContainer, initial_filter: Optional[st
                                     state["selected_ids"].add(current_id)
                                 else:
                                     state["selected_ids"].discard(current_id)
+                                selected_label.text = (
+                                    f"✓ {len(state['selected_ids'])} aluno(s) selecionado(s) para ações em lote"
+                                    if state["selected_ids"]
+                                    else ""
+                                )
 
-                            chk.on("update:model-value", on_check)
+                            chk.on_value_change(on_check)
 
                             with ui.column().classes("gap-0"):
                                 with ui.row().classes("items-center gap-2"):
@@ -378,10 +386,10 @@ def render_interns_page(container: ServiceContainer, initial_filter: Optional[st
             del_dialog.open()
 
         # Connect filter handlers
-        search_input.on("update:model-value", lambda e: (state.update({"search": e.value or ""}), refresh_table()))
-        status_select.on("update:model-value", lambda e: (state.update({"status": e.value or "Todos"}), refresh_table()))
-        doc_filter_select.on("update:model-value", lambda e: (state.update({"doc_filter": e.value or "Todos"}), refresh_table()))
-        venue_select.on("update:model-value", lambda e: (state.update({"venue_id": int(e.value or 0)}), refresh_table()))
+        search_input.on_value_change(lambda e: (state.update({"search": e.value or ""}), refresh_table()))
+        status_select.on_value_change(lambda e: (state.update({"status": e.value or "Todos"}), refresh_table()))
+        doc_filter_select.on_value_change(lambda e: (state.update({"doc_filter": e.value or "Todos"}), refresh_table()))
+        venue_select.on_value_change(lambda e: (state.update({"venue_id": int(e.value if e.value is not None else 0)}), refresh_table()))
 
         def clear_filters():
             state["search"] = ""

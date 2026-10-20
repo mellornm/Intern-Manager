@@ -135,7 +135,7 @@ def render_dashboard_page(container: ServiceContainer):
                             state["filter_doc"] = e.value
                             refresh_all()
 
-                        doc_select.on("update:model-value", on_doc_change)
+                        doc_select.on_value_change(on_doc_change)
 
                     # Calculate ok vs pending
                     filter_name = state["filter_doc"]

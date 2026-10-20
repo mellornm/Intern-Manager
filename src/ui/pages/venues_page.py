@@ -158,7 +158,7 @@ def render_venues_page(container: ServiceContainer):
                     ui.button("Excluir", icon="delete", on_click=do_del).props("color=negative")
             del_dialog.open()
 
-        occupancy_select.on("update:model-value", lambda _: refresh_table())
-        search_input.on("update:model-value", lambda _: refresh_table())
+        occupancy_select.on_value_change(lambda _: refresh_table())
+        search_input.on_value_change(lambda _: refresh_table())
 
         refresh_table()

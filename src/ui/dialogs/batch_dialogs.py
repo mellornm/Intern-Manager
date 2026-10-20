@@ -147,7 +147,7 @@ def open_batch_meeting_dialog(
                         ).classes("text-sm")
                         checkboxes[intern.intern_id] = chk
 
-            venue_filter.on("update:model-value", lambda _: update_intern_checkboxes())
+            venue_filter.on_value_change(lambda _: update_intern_checkboxes())
             update_intern_checkboxes()
 
         def handle_save_batch_meeting():

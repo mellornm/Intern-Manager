@@ -33,12 +33,14 @@ def page_layout(title: str, active_path: str = "/"):
     ):
         with ui.row().classes("items-center gap-2 no-wrap"):
             drawer_btn = ui.button(icon="menu").props("flat round dense color=white")
-            with ui.row().classes("items-center gap-2 cursor-pointer").on(
-                "click", lambda: ui.navigate.to("/")
+            with (
+                ui.row()
+                .classes("items-center gap-2 cursor-pointer")
+                .on("click", lambda: ui.navigate.to("/"))
             ):
-                ui.avatar("school", color="blue-7", text_color="white", size="sm").classes(
-                    "rounded-lg"
-                )
+                ui.avatar(
+                    "school", color="blue-7", text_color="white", size="sm"
+                ).classes("rounded-lg")
                 ui.label("InternManager").classes(
                     "text-base sm:text-lg font-extrabold tracking-tight text-white"
                 )
@@ -58,11 +60,17 @@ def page_layout(title: str, active_path: str = "/"):
                 on_click=lambda: ui.navigate.to(
                     "https://mellornm.github.io/Intern-Manager/", new_tab=True
                 ),
-            ).props("flat round dense color=grey-4 size=sm").tooltip("Documentação e Ajuda")
+            ).props("flat round dense color=grey-4 size=sm").tooltip(
+                "Documentação e Ajuda"
+            )
 
-    with ui.left_drawer(value=True).props("breakpoint=1024 width=250").classes(
-        "bg-slate-900 text-slate-100 p-0 flex flex-col justify-between border-r border-slate-800"
-    ) as drawer:
+    with (
+        ui.left_drawer(value=True)
+        .props("breakpoint=1024 width=250")
+        .classes(
+            "bg-slate-900 text-slate-100 p-0 flex flex-col justify-between border-r border-slate-800"
+        ) as drawer
+    ):
         drawer_btn.on_click(drawer.toggle)
 
         with ui.column().classes("w-full p-0 gap-1"):
@@ -75,7 +83,9 @@ def page_layout(title: str, active_path: str = "/"):
                     ui.label("Coordenação de Estágios").classes(
                         "font-bold text-xs text-slate-100 tracking-wide uppercase"
                     )
-                    ui.label("Painel Acadêmico v3.1").classes("text-[11px] text-slate-400")
+                    ui.label("Painel Acadêmico v3.1.1").classes(
+                        "text-[11px] text-slate-400"
+                    )
 
             # Navigation list
             with ui.list().classes("w-full px-2.5 py-3 gap-1"):
@@ -87,10 +97,12 @@ def page_layout(title: str, active_path: str = "/"):
                         else "text-slate-300 hover:bg-slate-800/80 hover:text-white font-medium"
                     )
                     icon_color = "text-white" if is_active else "text-slate-400"
-                    with ui.item(
-                        on_click=lambda p=item["path"]: ui.navigate.to(p)
-                    ).props("clickable v-ripple").classes(
-                        f"w-full rounded-xl px-3 py-2.5 transition-colors {item_classes}"
+                    with (
+                        ui.item(on_click=lambda p=item["path"]: ui.navigate.to(p))
+                        .props("clickable v-ripple")
+                        .classes(
+                            f"w-full rounded-xl px-3 py-2.5 transition-colors {item_classes}"
+                        )
                     ):
                         with ui.item_section().props("avatar").classes("min-w-0 pr-3"):
                             ui.icon(item["icon"], size="20px").classes(icon_color)

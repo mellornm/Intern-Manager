@@ -383,7 +383,9 @@ class ReportService:
 
                 text_str = obs.observation or "Sem conteúdo"
                 if getattr(obs, "is_incident", False):
-                    text_str = f"<b><font color='#C0392B'>[OCORRÊNCIA]</font></b> {text_str}"
+                    text_str = (
+                        f"<b><font color='#C0392B'>[OCORRÊNCIA]</font></b> {text_str}"
+                    )
                 if getattr(obs, "attachment_path", None):
                     text_str += " <i>(Documento comprobatório anexado no sistema)</i>"
 
@@ -453,7 +455,7 @@ class ReportService:
         sig_elements.append(Spacer(1, 10 * mm))
         sig_elements.append(
             Paragraph(
-                f"Documento gerado eletronicamente em {date_emission} via Intern Manager Pro v3.1.<br/>Autenticidade sujeita a verificação.",
+                f"Documento gerado eletronicamente em {date_emission} via Intern Manager Pro v3.1.1.<br/>Autenticidade sujeita a verificação.",
                 styles["SmallText"],
             )
         )

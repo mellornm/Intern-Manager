@@ -75,7 +75,7 @@ class EvaluationCriteriaService(BaseService[EvaluationCriteria]):
         Raises:
             ValueError: If ID is missing, fields are missing, or weight is invalid.
         """
-        self._ensure_has_id(criteria, "evaluation criteria")
+        self._ensure_has_id(criteria, "criteria")
 
         self._validate_required_fields(criteria)
         self._validate_weight(criteria)
@@ -92,7 +92,7 @@ class EvaluationCriteriaService(BaseService[EvaluationCriteria]):
         Returns:
             bool: True if the deletion was successful, False otherwise.
         """
-        return self.delete(criteria, "evaluation criteria")
+        return self.delete(criteria, "criteria")
 
     def list_active_criteria(self):
         """

@@ -143,14 +143,14 @@ def render_venues_page(container: ServiceContainer):
         def confirm_delete_venue(venue: Venue):
             with ui.dialog() as del_dialog, ui.card().classes("p-6 dialog-card"):
                 ui.label("Confirmar Exclusão").classes("text-lg font-bold text-slate-800")
-                ui.label(f"Deseja excluir o local '{venue.name}'?").classes("text-sm text-slate-600")
+                ui.label(f"Deseja excluir o local '{venue.venue_name}'?").classes("text-sm text-slate-600")
 
                 with ui.row().classes("w-full justify-end gap-2 pt-4"):
                     ui.button("Cancelar", on_click=del_dialog.close).props("flat color=grey")
 
                     def do_del():
                         if venue.venue_id:
-                            container.venue_service.delete(venue.venue_id)
+                            container.venue_service.delete_venue(venue)
                             ui.notify("Local excluído.", color="info")
                             del_dialog.close()
                             refresh_table()

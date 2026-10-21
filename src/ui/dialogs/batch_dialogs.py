@@ -7,6 +7,7 @@ from typing import Callable, List, Optional
 from nicegui import ui
 
 from core.constants import DEFAULT_DOCUMENTS_LIST
+from core.models.document import Document
 from core.models.meeting import Meeting
 from services.document_service import DocumentService
 from services.intern_service import InternService
@@ -50,19 +51,18 @@ def open_batch_document_dialog(
                     matched_doc = next((d for d in docs if d.document_name == doc_name), None)
 
                     if matched_doc and matched_doc.document_id:
-                        document_service.update_document_status(
-                            document_id=matched_doc.document_id,
-                            status="Aprovado",
-                            feedback="Aprovado em lote via painel de coordenação.",
-                        )
+                        matched_doc.status = "Aprovado"
+                        matched_doc.feedback = "Aprovado em lote via painel de coordenação."
+                        document_service.update_document(matched_doc)
                     else:
                         # Create and approve
-                        new_id = document_service.create_document(intern_id, doc_name)
-                        document_service.update_document_status(
-                            document_id=new_id,
+                        new_doc = Document(
+                            intern_id=intern_id,
+                            document_name=doc_name,
                             status="Aprovado",
                             feedback="Aprovado em lote via painel de coordenação.",
                         )
+                        document_service.add_new_document(new_doc)
 
                 ui.notify(f"Documento '{doc_name}' aprovado para {count} alunos!", color="positive")
                 dialog.close()
@@ -166,8 +166,8 @@ def open_batch_meeting_dialog(
                     m = Meeting(
                         intern_id=intern_id,
                         meeting_date=date_input.value,
-                        topic=topic,
-                        presence=presence_chk.value,
+                        meeting_topic=topic,
+                        is_intern_present=bool(presence_chk.value),
                     )
                     meeting_service.add_new_meeting(m)
 

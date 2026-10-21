@@ -108,9 +108,10 @@ def open_intern_dialog(
                 return
 
             if dt_start and dt_end:
-                valid, msg = validate_date_range(dt_start, dt_end)
-                if not valid:
-                    ui.notify(msg, color="negative")
+                try:
+                    validate_date_range(dt_start.isoformat(), dt_end.isoformat())
+                except ValueError as e:
+                    ui.notify(str(e), color="negative")
                     return
 
             chosen_venue_id = venue_select.value if venue_select.value != 0 else None
@@ -128,14 +129,17 @@ def open_intern_dialog(
                 intern.end_date = dt_end.isoformat() if dt_end else None
                 intern.is_active = active_switch.value
 
-                success = intern_service.update_intern(intern)
-                if success:
-                    ui.notify("Aluno atualizado com sucesso!", color="positive")
-                    dialog.close()
-                    if on_success:
-                        on_success()
-                else:
-                    ui.notify("Falha ao atualizar aluno.", color="negative")
+                try:
+                    success = intern_service.update_intern(intern)
+                    if success:
+                        ui.notify("Aluno atualizado com sucesso!", color="positive")
+                        dialog.close()
+                        if on_success:
+                            on_success()
+                    else:
+                        ui.notify("Falha ao atualizar aluno.", color="negative")
+                except Exception as e:
+                    ui.notify(f"Erro ao atualizar: {e}", color="negative")
             else:
                 new_intern = Intern(
                     name=name,
@@ -151,7 +155,7 @@ def open_intern_dialog(
                     is_active=active_switch.value,
                 )
                 try:
-                    intern_service.save_intern(new_intern)
+                    intern_service.add_new_intern(new_intern)
                     ui.notify(f"Aluno {name} cadastrado com sucesso!", color="positive")
                     dialog.close()
                     if on_success:

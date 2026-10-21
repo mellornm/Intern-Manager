@@ -81,7 +81,7 @@ def render_criteria_page(container: ServiceContainer):
 
                     def do_del():
                         if crit.criteria_id:
-                            container.criteria_service.delete(crit.criteria_id)
+                            container.criteria_service.delete_criteria(crit)
                             ui.notify("Critério excluído.", color="info")
                             del_dialog.close()
                             refresh_table()

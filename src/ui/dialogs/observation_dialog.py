@@ -44,7 +44,7 @@ def open_observation_dialog(
                     return
 
                 for obs in reversed(obs_list):
-                    date_display = obs.date.strftime("%d/%m/%Y") if obs.date else "Data não inf."
+                    date_display = obs.last_update[:10] if obs.last_update else "Data não inf."
                     with ui.card().classes("w-full p-3 bg-white border border-slate-200 gap-1"):
                         with ui.row().classes("w-full justify-between items-center"):
                             ui.badge(date_display, color="blue-7").classes("text-xs font-semibold")
@@ -57,20 +57,13 @@ def open_observation_dialog(
 
         def handle_delete_obs(obs_id):
             if obs_id:
-                service.delete(obs_id)
+                service.delete_observation(obs_id)
                 ui.notify("Observação excluída.", color="info")
                 refresh_observations()
 
         # Add new observation form
         with ui.column().classes("w-full pt-3 border-t border-slate-200 gap-2"):
             ui.label("Adicionar Nova Anotação").classes("text-xs font-bold text-slate-700 uppercase tracking-wider")
-
-            with ui.row().classes("w-full gap-2 items-center"):
-                date_input = ui.input("Data", value=date.today().isoformat()).classes("w-40").props("dense outlined")
-                with date_input.add_slot("append"):
-                    ui.icon("event").classes("cursor-pointer")
-                    with ui.menu():
-                        ui.date().bind_value(date_input)
 
             obs_input = ui.textarea(
                 placeholder="Descreva o acompanhamento pedagógico, atitude, evolução ou ocorrência...",
@@ -88,7 +81,6 @@ def open_observation_dialog(
                 new_obs = Observation(
                     intern_id=intern.intern_id,
                     observation=text,
-                    date=date_input.value,
                 )
                 try:
                     service.add_new_observation(new_obs)

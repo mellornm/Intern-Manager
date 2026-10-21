@@ -33,7 +33,7 @@ def page_layout(title: str, active_path: str = "/"):
             drawer_btn = ui.button(icon="menu").props("flat round color=white")
             ui.icon("school", size="sm").classes("text-white")
             ui.label("InternManager Pro").classes("text-lg font-bold tracking-wide")
-            ui.badge("v3.0", color="blue-7").classes("ml-2 text-xs")
+            ui.badge("v3.1", color="blue-7").classes("ml-2 text-xs")
 
         with ui.row().classes("items-center gap-4"):
             ui.label(title).classes("text-sm text-blue-200 hidden sm:inline")

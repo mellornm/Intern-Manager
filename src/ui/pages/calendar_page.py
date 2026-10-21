@@ -176,16 +176,16 @@ def render_calendar_page(container: ServiceContainer):
                         for m in meetings:
                             intern = container.intern_service.get_by_id(m.intern_id)
                             intern_name = intern.name if intern else f"Aluno ID {m.intern_id}"
-                            status_txt = "Presente" if m.presence else "Ausente"
-                            status_col = "green-7" if m.presence else "red-7"
+                            status_txt = "Presente" if m.is_intern_present else "Ausente"
+                            status_col = "green-7" if m.is_intern_present else "red-7"
 
                             with ui.card().classes("w-full p-3 bg-blue-50/50 border border-blue-200 gap-1"):
                                 with ui.row().classes("w-full justify-between items-center"):
                                     ui.label(intern_name).classes("font-bold text-xs text-slate-900")
                                     ui.badge(status_txt, color=status_col).classes("text-xxs")
 
-                                if m.topic:
-                                    ui.label(m.topic).classes("text-xs text-slate-600")
+                                if m.meeting_topic:
+                                    ui.label(m.meeting_topic).classes("text-xs text-slate-600")
 
                     # Visits
                     if visits:
@@ -194,15 +194,15 @@ def render_calendar_page(container: ServiceContainer):
                             intern = container.intern_service.get_by_id(v.intern_id)
                             intern_name = intern.name if intern else f"Aluno ID {v.intern_id}"
                             venue = container.venue_service.get_by_id(v.venue_id) if v.venue_id else None
-                            venue_name = venue.name if venue else "Local Não Informado"
+                            venue_name = venue.venue_name if venue else "Local Não Informado"
 
                             with ui.card().classes("w-full p-3 bg-green-50/50 border border-green-200 gap-1"):
                                 with ui.row().classes("w-full justify-between items-center"):
                                     ui.label(intern_name).classes("font-bold text-xs text-slate-900")
                                     ui.label(f"📍 {venue_name}").classes("text-xs text-slate-700 font-semibold")
 
-                                if v.notes:
-                                    ui.label(v.notes).classes("text-xs text-slate-600")
+                                if v.observation:
+                                    ui.label(v.observation).classes("text-xs text-slate-600")
 
         # Connect month navigation buttons
         def go_prev_month():

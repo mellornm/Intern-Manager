@@ -72,8 +72,8 @@ def open_visit_dialog(
                                     on_click=lambda vis=v: handle_delete_visit(vis),
                                 ).props("flat round dense size=xs color=negative").tooltip("Excluir Visita")
 
-                        if v.notes:
-                            ui.label(v.notes).classes("text-sm text-slate-800 whitespace-pre-wrap")
+                        if v.observation:
+                            ui.label(v.observation).classes("text-sm text-slate-800 whitespace-pre-wrap")
 
         def handle_delete_visit(visit_obj):
             if visit_obj:
@@ -153,11 +153,15 @@ def open_visit_dialog(
                         return
 
                     selected_vid = venue_select.value if venue_select.value != 0 else None
+                    if not selected_vid:
+                        ui.notify("Selecione um local de estágio válido para a visita.", color="warning")
+                        return
+
                     new_visit = Visit(
                         intern_id=intern.intern_id,
                         venue_id=selected_vid,
                         visit_date=date_input.value,
-                        notes=notes_input.value or "",
+                        observation=notes_input.value or "",
                         photo_path=uploaded_photo_filename["name"] or None,
                     )
                     try:

@@ -44,8 +44,8 @@ def open_meeting_dialog(
                     return
 
                 for m in reversed(meetings):
-                    presence_color = "green-7" if m.presence else "red-7"
-                    presence_text = "Presente" if m.presence else "Ausente"
+                    presence_color = "green-7" if m.is_intern_present else "red-7"
+                    presence_text = "Presente" if m.is_intern_present else "Ausente"
 
                     with ui.card().classes("w-full p-3 bg-white border border-slate-200 gap-1"):
                         with ui.row().classes("w-full justify-between items-center"):
@@ -58,11 +58,11 @@ def open_meeting_dialog(
                                 on_click=lambda m_id=m.meeting_id: handle_delete_meeting(m_id),
                             ).props("flat round dense size=xs color=negative").tooltip("Excluir Reunião")
 
-                        ui.label(m.topic or "Sem pauta informada").classes("text-sm text-slate-800 font-medium pt-1")
+                        ui.label(m.meeting_topic or "Sem pauta informada").classes("text-sm text-slate-800 font-medium pt-1")
 
         def handle_delete_meeting(meeting_id):
             if meeting_id:
-                service.delete(meeting_id)
+                service.delete_meeting(meeting_id)
                 ui.notify("Reunião excluída.", color="info")
                 refresh_meetings()
 
@@ -96,8 +96,8 @@ def open_meeting_dialog(
                 new_meeting = Meeting(
                     intern_id=intern.intern_id,
                     meeting_date=date_input.value,
-                    topic=topic,
-                    presence=presence_chk.value,
+                    meeting_topic=topic,
+                    is_intern_present=bool(presence_chk.value),
                 )
                 try:
                     service.add_new_meeting(new_meeting)

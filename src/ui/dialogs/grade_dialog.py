@@ -5,6 +5,7 @@ Grades and Evaluation dialog with real-time weighted average calculation.
 from typing import Callable, Dict, Optional
 from nicegui import ui
 
+from core.models.grade import Grade
 from core.models.intern import Intern
 from services.evaluation_criteria_service import EvaluationCriteriaService
 from services.grade_service import GradeService
@@ -25,7 +26,7 @@ def open_grade_dialog(
 
     existing_grades = grade_service.get_by_intern_id(intern.intern_id) if intern.intern_id else []
     grades_map: Dict[int, float] = {
-        g.criteria_id: g.grade_value for g in existing_grades if g.criteria_id is not None
+        g.criteria_id: g.value for g in existing_grades if g.criteria_id is not None
     }
 
     grade_inputs: Dict[int, ui.number] = {}
@@ -99,13 +100,15 @@ def open_grade_dialog(
                 return
 
             try:
-                for crit_id, inp in grade_inputs.items():
-                    val = float(inp.value or 0.0)
-                    grade_service.save_or_update_grade(
+                grades_to_save = [
+                    Grade(
                         intern_id=intern.intern_id,
                         criteria_id=crit_id,
-                        value=val,
+                        value=float(inp.value or 0.0),
                     )
+                    for crit_id, inp in grade_inputs.items()
+                ]
+                grade_service.save_batch_grades(grades_to_save)
                 ui.notify("Notas salvas com sucesso!", color="positive")
                 dialog.close()
                 if on_success:

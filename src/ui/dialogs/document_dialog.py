@@ -5,6 +5,7 @@ Document audit and management dialog for NiceGUI.
 from typing import Callable, Optional
 from nicegui import ui
 
+from core.models.document import Document
 from core.models.intern import Intern
 from services.document_service import DocumentService
 from ui.components.status_badge import create_status_badge
@@ -116,7 +117,12 @@ def open_document_dialog(
                         ui.notify("Informe o nome do documento.", color="warning")
                         return
                     if intern.intern_id:
-                        service.create_document(intern_id=intern.intern_id, name=val)
+                        new_doc = Document(
+                            intern_id=intern.intern_id,
+                            document_name=val,
+                            status="Pendente",
+                        )
+                        service.add_new_document(new_doc)
                         ui.notify("Documento adicionado!", color="positive")
                         add_dialog.close()
                         refresh_docs()
@@ -161,11 +167,9 @@ def open_document_dialog(
                     chosen_feedback = feedback_input.value or ""
 
                     if doc.document_id:
-                        service.update_document_status(
-                            document_id=doc.document_id,
-                            status=chosen_status,
-                            feedback=chosen_feedback,
-                        )
+                        doc.status = chosen_status
+                        doc.feedback = chosen_feedback
+                        service.update_document(doc)
                         ui.notify(f"Documento marcado como {chosen_status}!", color="positive")
                         audit_dialog.close()
                         refresh_docs()

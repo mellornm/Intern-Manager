@@ -18,29 +18,76 @@ def open_criteria_dialog(
     is_edit = criteria is not None
     dialog_title = "Editar Critério de Avaliação" if is_edit else "Novo Critério de Avaliação"
 
-    init_name = criteria.name if is_edit else ""
-    init_desc = criteria.description if is_edit else ""
-    init_weight = criteria.weight if (is_edit and criteria.weight is not None) else 1.0
+    init_name = criteria.name if is_edit and criteria else ""
+    init_desc = criteria.description if is_edit and criteria else ""
+    init_weight = (
+        criteria.weight if (is_edit and criteria and criteria.weight is not None) else 2.5
+    )
 
-    with ui.dialog() as dialog, ui.card().classes("w-full max-w-md p-6 dialog-card"):
-        with ui.row().classes("w-full items-center justify-between pb-3 border-b border-slate-200"):
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("rule", color="primary", size="md")
-                ui.label(dialog_title).classes("text-xl font-bold text-slate-800")
-            ui.button(icon="close", on_click=dialog.close).props("flat round dense size=sm")
+    with ui.dialog() as dialog, ui.card().classes(
+        "w-full max-w-md p-0 rounded-2xl overflow-hidden shadow-2xl border border-slate-200"
+    ):
+        with ui.row().classes(
+            "w-full px-6 py-4 bg-slate-50 border-b border-slate-200 items-center justify-between"
+        ):
+            with ui.row().classes("items-center gap-3"):
+                ui.avatar("rule", color="blue-1", text_color="primary", size="md")
+                with ui.column().classes("gap-0"):
+                    ui.label(dialog_title).classes("text-base sm:text-lg font-bold text-slate-900")
+                    ui.label("Defina o título e o peso máximo da nota").classes(
+                        "text-xs text-slate-500"
+                    )
+            ui.button(icon="close", on_click=dialog.close).props(
+                "flat round dense size=sm color=grey-7"
+            )
 
-        with ui.column().classes("w-full gap-3 pt-2"):
-            name_input = ui.input("Nome do Critério *", value=init_name, placeholder="Ex: Projeto de Intervenção").classes("w-full")
-            desc_input = ui.input("Descrição / Instruções", value=init_desc, placeholder="Ex: Avaliação do relatório final").classes("w-full")
-            weight_input = ui.number("Peso da Avaliação *", value=init_weight, min=0.1, max=100.0, step=0.5).classes("w-full")
+        with ui.column().classes("w-full px-6 py-5 gap-4"):
+            name_input = (
+                ui.input(
+                    "Nome do Critério *",
+                    value=init_name,
+                    placeholder="Ex: Assiduidade e Pontualidade",
+                )
+                .classes("w-full")
+                .props("outlined dense hide-bottom-space")
+            )
+            with name_input.add_slot("prepend"):
+                ui.icon("label", size="xs").classes("text-slate-400")
+
+            desc_input = (
+                ui.textarea(
+                    "Descrição / Orientações",
+                    value=init_desc,
+                    placeholder="Ex: Avaliação de cumprimento da escala e compromissos...",
+                )
+                .classes("w-full")
+                .props("outlined dense rows=2 hide-bottom-space")
+            )
+
+            weight_input = (
+                ui.number(
+                    "Peso / Nota Máxima do Critério *",
+                    value=init_weight,
+                    min=0.1,
+                    max=100.0,
+                    step=0.5,
+                    format="%.1f",
+                )
+                .classes("w-full")
+                .props("outlined dense hide-bottom-space")
+            )
+            with weight_input.add_slot("prepend"):
+                ui.icon("scale", size="xs").classes("text-slate-400")
 
         def handle_save():
             name = (name_input.value or "").strip()
             if not name:
+                name_input.props("error error-message='Informe o nome do critério'")
                 ui.notify("O nome do critério é obrigatório.", color="negative")
                 return
+            name_input.props(remove="error")
 
-            weight = float(weight_input.value or 1.0)
+            weight = float(weight_input.value or 0.0)
             if weight <= 0:
                 ui.notify("O peso deve ser maior que zero.", color="negative")
                 return
@@ -51,8 +98,7 @@ def open_criteria_dialog(
                 criteria.weight = weight
 
                 try:
-                    criteria_service = service
-                    criteria_service.update_criteria(criteria)
+                    service.update_criteria(criteria)
                     ui.notify("Critério atualizado com sucesso!", color="positive")
                     dialog.close()
                     if on_success:
@@ -74,8 +120,12 @@ def open_criteria_dialog(
                 except Exception as e:
                     ui.notify(f"Erro ao salvar critério: {e}", color="negative")
 
-        with ui.row().classes("w-full justify-end gap-2 pt-4 border-t border-slate-200 mt-2"):
-            ui.button("Cancelar", on_click=dialog.close).props("flat color=grey")
-            ui.button("Salvar Critério", icon="check", on_click=handle_save).props("color=primary")
+        with ui.row().classes(
+            "w-full px-6 py-3.5 bg-slate-50 border-t border-slate-200 justify-end items-center gap-2"
+        ):
+            ui.button("Cancelar", on_click=dialog.close).props("flat no-caps color=grey-7")
+            ui.button("Salvar Critério", icon="check", on_click=handle_save).props(
+                "unelevated no-caps color=primary"
+            ).classes("px-5 font-semibold")
 
     dialog.open()

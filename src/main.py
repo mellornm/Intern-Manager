@@ -100,9 +100,12 @@ def startup_system():
     # 7. Static file directories
     photos_dir = USER_DATA_ROOT / "photos"
     photos_dir.mkdir(parents=True, exist_ok=True)
+    attachments_dir = USER_DATA_ROOT / "attachments"
+    attachments_dir.mkdir(parents=True, exist_ok=True)
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
     app.add_static_files("/photos", str(photos_dir))
+    app.add_static_files("/attachments", str(attachments_dir))
     app.add_static_files("/uploads", str(UPLOADS_DIR))
 
     # 8. Register all Web routes

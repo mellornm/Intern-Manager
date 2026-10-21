@@ -382,6 +382,10 @@ class ReportService:
                             date_str = date_str[:16]
 
                 text_str = obs.observation or "Sem conteúdo"
+                if getattr(obs, "is_incident", False):
+                    text_str = f"<b><font color='#C0392B'>[OCORRÊNCIA]</font></b> {text_str}"
+                if getattr(obs, "attachment_path", None):
+                    text_str += " <i>(Documento comprobatório anexado no sistema)</i>"
 
                 obs_data.append(
                     [

@@ -1,5 +1,5 @@
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, func
+from sqlalchemy import Boolean, String, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.models.base import Base
@@ -11,10 +11,10 @@ if TYPE_CHECKING:
 
 class Observation(Base):
     """
-    SQLAlchemy model representing a textual observation about an intern.
+    SQLAlchemy model representing a pedagogical observation or incident report about an intern.
 
-    This class maps to the 'observations' table and stores various notes
-    and administrative records for individual students.
+    This class maps to the 'observations' table and stores notes, medical/field incidents,
+    and optional supporting document attachments for individual students.
     """
 
     __tablename__ = "observations"
@@ -24,6 +24,14 @@ class Observation(Base):
 
     # Core observation content
     observation: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Incident / Alert flag (True = Ocorrência/Intercorrência, False = Observação comum)
+    is_incident: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+
+    # Optional physical attachment filename stored in USER_DATA_ROOT / "attachments"
+    attachment_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Audit column - defaults to current timestamp on SQLite
     last_update: Mapped[Optional[str]] = mapped_column(
@@ -43,4 +51,7 @@ class Observation(Base):
 
     def __repr__(self) -> str:
         """Returns a string representation of the Observation instance."""
-        return f"<Observation(id={self.observation_id}, intern_id={self.intern_id})>"
+        return (
+            f"<Observation(id={self.observation_id}, intern_id={self.intern_id}, "
+            f"incident={self.is_incident}, attachment={self.attachment_path})>"
+        )

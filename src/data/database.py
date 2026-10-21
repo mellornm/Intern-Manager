@@ -1,6 +1,6 @@
 import logging
 from contextlib import contextmanager
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy.engine import Engine
 from config import DB_PATH
@@ -45,6 +45,7 @@ class DatabaseManager:
 
         self._setup_listeners()
         self._initialized = True
+        self._ensure_schema_columns()
         logger.info("Database engine started with WAL and concurrency support.")
 
     def _setup_listeners(self):
@@ -60,6 +61,42 @@ class DatabaseManager:
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.execute("PRAGMA busy_timeout=30000")
             cursor.close()
+
+    def _ensure_schema_columns(self):
+        """
+        Safely adds newly introduced columns to existing SQLite tables without data loss.
+        """
+        try:
+            with self.engine.begin() as conn:
+                tables = [
+                    r[0]
+                    for r in conn.execute(
+                        text("SELECT name FROM sqlite_master WHERE type='table'")
+                    ).fetchall()
+                ]
+                if "observations" in tables:
+                    cols = [
+                        r[1]
+                        for r in conn.execute(
+                            text("PRAGMA table_info(observations)")
+                        ).fetchall()
+                    ]
+                    if "is_incident" not in cols:
+                        conn.execute(
+                            text(
+                                "ALTER TABLE observations ADD COLUMN is_incident BOOLEAN NOT NULL DEFAULT 0"
+                            )
+                        )
+                        logger.info("Added 'is_incident' column to observations table.")
+                    if "attachment_path" not in cols:
+                        conn.execute(
+                            text(
+                                "ALTER TABLE observations ADD COLUMN attachment_path VARCHAR"
+                            )
+                        )
+                        logger.info("Added 'attachment_path' column to observations table.")
+        except Exception as e:
+            logger.warning("Schema column check warning: %s", e)
 
     def get_session(self) -> Session:
         """Return the current session from the registry."""
@@ -83,10 +120,10 @@ class DatabaseManager:
 
     def create_tables(self):
         """
-        Bootstrap tables from models.
-        Only use this for dev; Alembic handles migrations in prod.
+        Bootstrap tables from models and ensure incremental columns exist.
         """
         Base.metadata.create_all(bind=self.engine)
+        self._ensure_schema_columns()
 
 
 db_manager = DatabaseManager()
